@@ -778,12 +778,18 @@
             document.getElementById('clock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
             document.getElementById('date').textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
             
-            if (!store.currentUser) {
-                const h = now.getHours();
-                let greeting = db ? "Connecting..." : (h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening");
-                document.getElementById('greeting').textContent = db ? greeting : greeting + ".";
+        if (!store.currentUser) {
+            const h = now.getHours();
+            const timeBasedGreeting = (h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening");
+            let greetingText;
+            if (db) { // Firebase is connected and db is available
+                greetingText = timeBasedGreeting + ".";
+            } else { // db is null, so still connecting, or hasn't finished initializing.
+                greetingText = "Connecting...";
             }
+            document.getElementById('greeting').textContent = greetingText;
         }
+
         function updateKanbanTimers() {
             const now = Date.now();
             document.querySelectorAll('[id^="timer-"]').forEach(el => {
