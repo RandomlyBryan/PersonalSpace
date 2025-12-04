@@ -167,9 +167,14 @@
                 </ul>
             </div>
 
-            <div class="p-4 flex justify-between items-center text-white/50 text-xs border-t border-white/10">
-                <span>&copy; 2025 PersonalSpace</span>
-                <button onclick="toggleTheme()" class="hover:text-white transition"><i class="fas fa-moon" id="theme-icon"></i></button>
+            <div class="p-4 flex flex-col gap-3 border-t border-white/10">
+                <div class="flex justify-between items-center text-white/50 text-xs">
+                    <span>&copy; 2025 PersonalSpace</span>
+                    <button onclick="toggleTheme()" class="hover:text-white transition" title="Toggle Theme"><i class="fas fa-moon" id="theme-icon"></i></button>
+                </div>
+                <button onclick="clearAllData()" class="text-left text-[10px] text-red-300 hover:text-red-100 transition flex items-center gap-2">
+                    <i class="fas fa-trash-alt"></i> Reset All Data
+                </button>
             </div>
         </aside>
 
@@ -451,6 +456,7 @@
         window.deleteCurrentTask = deleteCurrentTask;
         window.toggleReportModal = toggleReportModal;
         window.generateReport = generateReport;
+        window.clearAllData = clearAllData; // NEW
         
         // Avatar
         window.triggerAvatarUpload = triggerAvatarUpload;
@@ -773,6 +779,14 @@
                 localStorage.setItem('nexus_kanban', JSON.stringify(store.kanbanTasks));
                 renderKanbanBoard();
                 closeModal('task-modal');
+            }
+        }
+        
+        // --- NEW: CLEAR DATA ---
+        function clearAllData() {
+            if(confirm("WARNING: This will delete ALL tasks, users, and settings. This cannot be undone.\n\nAre you sure?")) {
+                localStorage.clear();
+                location.reload();
             }
         }
 
