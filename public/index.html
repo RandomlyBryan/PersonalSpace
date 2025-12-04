@@ -8,7 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Tailwind Config -->
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -65,30 +64,25 @@
 </head>
 <body class="text-slate-800 antialiased flex flex-col h-screen w-screen overflow-hidden">
 
-    <!-- SETUP BANNER (Visible if offline) -->
     <div id="setup-banner" class="hidden bg-amber-500 text-white px-4 py-2 text-center text-sm font-bold cursor-pointer hover:bg-amber-600 transition shadow-lg z-50 flex justify-center items-center gap-2" onclick="showSetupAlert()">
         <i class="fas fa-exclamation-triangle"></i>
         <span>Running in Offline Mode. Check internet connection.</span>
     </div>
 
     <div class="flex flex-1 overflow-hidden relative">
-        <!-- LEFT SIDEBAR -->
         <aside class="sidebar w-64 flex-shrink-0 flex flex-col justify-between h-full z-20 transition-all duration-300 transform -translate-x-full md:translate-x-0 absolute md:relative" id="main-sidebar">
         
-        <!-- App Brand -->
         <div class="p-6 text-white">
             <h1 class="text-xl font-bold tracking-tight"><i class="fas fa-layer-group mr-2"></i>PersonalSpace</h1>
             <p class="text-xs text-white/60 uppercase tracking-wider mt-1">Project Hub <span id="status-badge" class="text-emerald-300 text-[9px] border border-emerald-300 px-1 rounded ml-1">LIVE</span></p>
         </div>
 
-        <!-- User Switcher -->
         <div class="px-4 mb-4">
                 <label class="text-[10px] text-white/60 uppercase font-bold block mb-1">Log In As:</label>
                 <div class="relative">
                     <select id="user-switcher" onchange="switchUser(this.value)" class="w-full bg-white/20 border border-white/10 rounded px-2 py-2 text-sm text-white outline-none focus:bg-white/30 cursor-pointer appearance-none font-medium">
                         <option value="" class="text-slate-800 font-bold">★ Main Workspace (Admin)</option>
-                        <!-- Users injected here -->
-                    </select>
+                        </select>
                     <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-white">
                         <i class="fas fa-chevron-down text-xs"></i>
                     </div>
@@ -96,7 +90,6 @@
                 <p class="text-[10px] text-white/50 mt-1 italic" id="view-mode-hint">Loading...</p>
             </div>
 
-            <!-- Navigation -->
             <nav class="flex-1 px-4 space-y-2">
                 <button onclick="switchView('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center gap-3 text-white px-4 py-3 rounded-r-lg transition hover:bg-white/10 active">
                     <i class="fas fa-home w-5"></i> Dashboard
@@ -106,7 +99,6 @@
                 </button>
             </nav>
 
-            <!-- Team Management -->
             <div class="p-4 border-t border-white/10">
                 <h3 class="text-xs font-bold text-white/60 uppercase mb-3 flex justify-between items-center">
                     Team Members 
@@ -126,21 +118,18 @@
                 </ul>
             </div>
 
-            <!-- Footer -->
             <div class="p-4 flex justify-between items-center text-white/50 text-xs border-t border-white/10">
-                <span>&copy; 2024 PersonalSpace</span>
+                <span>&copy; 2025 PersonalSpace</span>
                 <button onclick="toggleTheme()" class="hover:text-white transition"><i class="fas fa-moon" id="theme-icon"></i></button>
             </div>
         </aside>
 
-        <!-- MAIN CONTENT -->
         <main class="flex-1 relative h-full overflow-hidden flex flex-col bg-white/5 backdrop-blur-sm">
             
             <button onclick="document.getElementById('main-sidebar').classList.toggle('-translate-x-full')" class="md:hidden absolute top-4 left-4 z-50 text-white bg-indigo-600 p-2 rounded-lg shadow-lg">
                 <i class="fas fa-bars"></i>
             </button>
 
-            <!-- DASHBOARD VIEW -->
             <div id="view-dashboard" class="flex-1 overflow-y-auto p-4 md:p-10 fade-in h-full flex flex-col">
                 
                 <header class="mb-8 text-white">
@@ -153,7 +142,6 @@
                 </header>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
-                    <!-- Daily Focus -->
                     <div class="lg:col-span-1 flex flex-col gap-6">
                         <div class="glass-panel rounded-2xl p-6">
                             <h2 class="text-lg font-bold mb-3 flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
@@ -164,7 +152,6 @@
                                 onchange="saveFocus(this.value)">
                         </div>
 
-                        <!-- Personal Notepad -->
                         <div class="glass-panel rounded-2xl p-6 flex-1 flex flex-col min-h-[300px]">
                             <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-amber-500">
                                 <i class="fas fa-sticky-note"></i> Personal Notes
@@ -177,24 +164,41 @@
                         </div>
                     </div>
 
-                    <!-- Personal Quick Tasks -->
                     <div class="lg:col-span-2 glass-panel rounded-2xl p-6 flex flex-col h-full min-h-[400px]">
                         <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                            <i class="fas fa-check-circle"></i> Quick Tasks
+                            <i class="fas fa-check-circle"></i> My Tasks
                         </h2>
                         <div class="flex gap-2 mb-4">
-                            <input type="text" id="quick-task-input" placeholder="Add a personal task..." 
+                            <div class="relative w-32">
+                                <select id="quick-task-status" class="w-full h-full appearance-none bg-slate-100 dark:bg-slate-700/50 border-0 rounded-lg pl-3 pr-8 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer">
+                                    <option value="todo">To Do</option>
+                                    <option value="inprogress">In Progress</option>
+                                    <option value="done">Completed</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-slate-500">
+                                    <i class="fas fa-chevron-down text-xs"></i>
+                                </div>
+                            </div>
+                            
+                            <input type="text" id="quick-task-input" placeholder="Add a task..." 
                                 class="flex-1 bg-slate-100 dark:bg-slate-700/50 border-0 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 outline-none dark:text-white">
-                            <button onclick="addQuickTask()" class="bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg px-4">
+                            
+                            <button onclick="addQuickTask()" class="bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg px-4 transition transform active:scale-95">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
+                        
+                        <div class="grid grid-cols-12 gap-2 text-xs font-bold text-slate-400 uppercase mb-2 px-3">
+                            <div class="col-span-1"></div> <div class="col-span-7">Task</div>
+                            <div class="col-span-3">Status</div>
+                            <div class="col-span-1 text-right"></div>
+                        </div>
+
                         <ul id="quick-task-list" class="flex-1 overflow-y-auto space-y-2 pr-2"></ul>
                     </div>
                 </div>
             </div>
 
-            <!-- KANBAN VIEW -->
             <div id="view-kanban" class="flex-1 overflow-hidden p-4 md:p-6 fade-in hidden flex-col h-full">
                 
                 <div class="flex flex-col md:flex-row justify-between items-center mb-6 shrink-0 text-white">
@@ -218,7 +222,6 @@
                 <div class="flex-1 overflow-x-auto overflow-y-hidden pb-2">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-full min-w-[800px] md:min-w-0">
                         
-                        <!-- Columns -->
                         <div class="glass-panel rounded-xl flex flex-col h-full border-t-4 border-slate-400">
                             <div class="p-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-white/50 dark:bg-slate-800/50">
                                 <h3 class="font-bold text-slate-700 dark:text-slate-200">To Do</h3>
@@ -249,7 +252,6 @@
         </main>
     </div>
 
-    <!-- Task Modal -->
     <div id="task-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">
             <h2 class="text-xl font-bold mb-4 dark:text-white" id="modal-title">Task Details</h2>
@@ -283,7 +285,6 @@
         </div>
     </div>
 
-    <!-- Report Modal -->
     <div id="report-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-4xl h-[80vh] flex flex-col p-6 shadow-2xl">
             <div class="flex justify-between items-center mb-6">
@@ -318,7 +319,6 @@
         </div>
     </div>
 
-    <!-- FIREBASE & APP LOGIC -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
         import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, setDoc, getDoc } 
@@ -346,8 +346,8 @@
             users: [],
             kanbanTasks: [],
             focus: '',
-            notes: '',
-            quickTasks: []
+            notes: ''
+            // Removed 'quickTasks' as it's now merged with kanbanTasks
         };
         
         let draggedItem = null;
@@ -361,7 +361,7 @@
         window.saveFocus = saveFocus;
         window.saveNotes = saveNotes;
         window.addQuickTask = addQuickTask;
-        window.toggleQuickTask = toggleQuickTask;
+        window.quickCycleStatus = quickCycleStatus; // NEW
         window.deleteQuickTask = deleteQuickTask;
         window.openTaskModal = openTaskModal;
         window.closeModal = closeModal;
@@ -456,7 +456,8 @@
             if (userUnsubscribe) { userUnsubscribe(); userUnsubscribe = null; }
 
             // Clear Data visual
-            store.focus = ''; store.notes = ''; store.quickTasks = [];
+            store.focus = ''; store.notes = ''; 
+            // NOTE: We don't need to clear quickTasks here as they are now derived from kanbanTasks
             updateDashboardUI();
 
             if (store.currentUser) {
@@ -465,10 +466,11 @@
                     userUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
                         if (docSnap.exists()) {
                             const data = docSnap.data();
-                            store.focus = data.focus || ''; store.notes = data.notes || ''; store.quickTasks = data.quickTasks || [];
+                            store.focus = data.focus || ''; store.notes = data.notes || ''; 
+                            // Removed quickTasks loading from here
                             updateDashboardUI();
                         } else {
-                            setDoc(userDocRef, { focus: '', notes: '', quickTasks: [] });
+                            setDoc(userDocRef, { focus: '', notes: '' });
                         }
                     });
                 } else {
@@ -476,11 +478,10 @@
                     const key = `nexus_${store.currentUser}`;
                     store.focus = localStorage.getItem(`${key}_focus`) || '';
                     store.notes = localStorage.getItem(`${key}_notes`) || '';
-                    store.quickTasks = JSON.parse(localStorage.getItem(`${key}_quicktasks`)) || [];
                     updateDashboardUI();
                 }
             }
-            renderKanbanBoard();
+            renderKanbanBoard(); // Triggers renderQuickTasks via hook
         }
 
         function updateUIForUser() {
@@ -509,7 +510,7 @@
         function updateDashboardUI() {
             document.getElementById('focus-input').value = store.focus;
             document.getElementById('notepad').value = store.notes;
-            renderQuickTasks();
+            renderQuickTasks(); // Updates the My Tasks list based on current user
         }
 
         // --- WRITES (HYBRID) ---
@@ -530,41 +531,57 @@
                 }
             }
         }
+
+        // --- NEW QUICK TASK LOGIC (Unified) ---
         function addQuickTask() {
             const val = document.getElementById('quick-task-input').value.trim();
+            const status = document.getElementById('quick-task-status').value;
+            
             if(val) {
-                const newTask = { id: Date.now(), text: val, completed: false };
-                store.quickTasks.push(newTask);
+                // Create a FULL task object
+                const assignee = store.currentUser || "Unassigned";
+                const now = Date.now();
+                
+                const newTask = { 
+                    title: val, 
+                    description: "", // Empty description for quick tasks
+                    assignee: assignee,
+                    status: status, 
+                    createdAt: now, 
+                    completedAt: (status === 'done' ? now : null), 
+                    lastMoved: now, 
+                    log: { todo: 0, inprogress: 0, done: 0 } 
+                };
+
+                // Save to Firebase or Local Storage
+                if(db) {
+                    addDoc(collection(db, "tasks"), newTask);
+                } else {
+                    store.kanbanTasks.push({ id: Date.now().toString(), ...newTask });
+                    localStorage.setItem('nexus_kanban', JSON.stringify(store.kanbanTasks));
+                    renderKanbanBoard();
+                }
+                
                 document.getElementById('quick-task-input').value = '';
-                if(store.currentUser) {
-                    if(db) updateDoc(doc(db, "users", store.currentUser), { quickTasks: store.quickTasks });
-                    else {
-                        localStorage.setItem(`nexus_${store.currentUser}_quicktasks`, JSON.stringify(store.quickTasks));
-                        renderQuickTasks();
-                    }
-                }
             }
         }
-        function toggleQuickTask(id) {
-            const task = store.quickTasks.find(t => t.id === id);
-            if(task) {
-                task.completed = !task.completed;
-                if(store.currentUser) {
-                    if(db) updateDoc(doc(db, "users", store.currentUser), { quickTasks: store.quickTasks });
-                    else {
-                        localStorage.setItem(`nexus_${store.currentUser}_quicktasks`, JSON.stringify(store.quickTasks));
-                        renderQuickTasks();
-                    }
-                }
-            }
+
+        function quickCycleStatus(id, currentStatus) {
+            let nextStatus = 'todo';
+            if (currentStatus === 'todo') nextStatus = 'inprogress';
+            else if (currentStatus === 'inprogress') nextStatus = 'done';
+            else if (currentStatus === 'done') nextStatus = 'todo';
+            
+            updateTaskStatus(id, nextStatus);
         }
+
         function deleteQuickTask(id) {
-            store.quickTasks = store.quickTasks.filter(t => t.id !== id);
-            if(store.currentUser) {
-                if(db) updateDoc(doc(db, "users", store.currentUser), { quickTasks: store.quickTasks });
+            if(confirm('Delete this task?')) {
+                if(db) deleteDoc(doc(db, "tasks", id));
                 else {
-                    localStorage.setItem(`nexus_${store.currentUser}_quicktasks`, JSON.stringify(store.quickTasks));
-                    renderQuickTasks();
+                    store.kanbanTasks = store.kanbanTasks.filter(t => t.id !== id);
+                    localStorage.setItem('nexus_kanban', JSON.stringify(store.kanbanTasks));
+                    renderKanbanBoard();
                 }
             }
         }
@@ -753,20 +770,52 @@
                     container.appendChild(el);
                 });
             });
+
+            // HOOK: Update Dashboard List whenever Kanban Updates
+            renderQuickTasks();
         }
         
         function renderQuickTasks() {
             const list = document.getElementById('quick-task-list');
             list.innerHTML = '';
-            store.quickTasks.forEach(t => {
+
+            // Filter: Show tasks assigned to current user, or all if no user selected (Admin)
+            const myTasks = store.kanbanTasks.filter(t => {
+                return !store.currentUser || t.assignee === store.currentUser;
+            }).sort((a, b) => {
+                const map = { 'inprogress': 1, 'todo': 2, 'done': 3 };
+                return map[a.status] - map[b.status];
+            });
+
+            if (myTasks.length === 0) {
+                list.innerHTML = `<li class="text-center text-slate-400 text-sm italic mt-10">No tasks found for you.</li>`;
+                return;
+            }
+
+            myTasks.forEach(t => {
                 const li = document.createElement('li');
-                li.className = 'flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 group';
+                li.className = 'grid grid-cols-12 gap-2 items-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 group transition hover:shadow-md';
+                
+                let statusClass = "bg-slate-100 text-slate-500";
+                let statusLabel = "To Do";
+                if(t.status === 'inprogress') { statusClass = "bg-indigo-100 text-indigo-600"; statusLabel = "In Progress"; }
+                if(t.status === 'done') { statusClass = "bg-emerald-100 text-emerald-600"; statusLabel = "Completed"; }
+
                 li.innerHTML = `
-                    <div class="flex items-center gap-3 overflow-hidden">
-                        <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleQuickTask(${t.id})" class="accent-emerald-500 w-4 h-4">
-                        <span class="${t.completed ? 'line-through text-slate-400' : 'dark:text-slate-200'} truncate">${t.text}</span>
+                    <div class="col-span-1 flex justify-center">
+                        <button onclick="quickCycleStatus('${t.id}', '${t.status}')" class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition ${t.status === 'done' ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 hover:border-indigo-500'}">
+                            ${t.status === 'done' ? '<i class="fas fa-check text-[10px]"></i>' : ''}
+                        </button>
                     </div>
-                    <button onclick="deleteQuickTask(${t.id})" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-trash"></i></button>
+                    <div class="col-span-7 overflow-hidden">
+                        <span class="${t.status === 'done' ? 'line-through text-slate-400' : 'dark:text-slate-200 font-medium'} truncate block" title="${t.title}">${t.title}</span>
+                    </div>
+                    <div class="col-span-3">
+                        <span class="${statusClass} text-[10px] uppercase font-bold px-2 py-1 rounded-full whitespace-nowrap">${statusLabel}</span>
+                    </div>
+                    <div class="col-span-1 text-right">
+                        <button onclick="deleteQuickTask('${t.id}')" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-trash"></i></button>
+                    </div>
                 `;
                 list.appendChild(li);
             });
@@ -778,23 +827,11 @@
             document.getElementById('clock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
             document.getElementById('date').textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
             
-        if (!store.currentUser) {
-            const h = now.getHours();
-            // Determine the base greeting based on time
-            const timeBasedGreeting = (h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening");
-
-            let greetingText;
-            // If Firebase has successfully initialized (db is not null), show the time-based greeting.
-            // If db is still null, it means we're in the "Connecting" state before a final outcome.
-            // (Note: enableOfflineMode() already explicitly sets the greeting to "Offline Mode" if connection fails.)
-            if (db) { // Firebase is connected and db is available
-                greetingText = timeBasedGreeting + ".";
-            } else { // db is null, so still connecting, or hasn't finished initializing.
-                greetingText = "Connecting...";
+            if (!store.currentUser) {
+                const h = now.getHours();
+                const timeBasedGreeting = (h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening");
+                document.getElementById('greeting').textContent = db ? timeBasedGreeting + "." : "Connecting...";
             }
-            document.getElementById('greeting').textContent = greetingText;
-			
-			}
         }
 
         function updateKanbanTimers() {
@@ -867,7 +904,7 @@
         }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
         
-        // --- REPORTING ---
+        // --- REPORTING (UPDATED WITH TOTAL TIME) ---
         function toggleReportModal() {
             const m = document.getElementById('report-modal');
             m.classList.toggle('hidden');
@@ -887,17 +924,31 @@
                 return;
             }
 
+            let totalSeconds = 0; // Accumulator for total time
+
             completed.forEach(t => {
+                const workTime = t.log['inprogress'] || 0;
+                totalSeconds += workTime;
+
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 dark:hover:bg-slate-700/50 dark:text-slate-300 border-b border-slate-100 dark:border-slate-700";
                 tr.innerHTML = `
                     <td class="p-3 font-medium">${t.title}</td>
                     <td class="p-3"><span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full text-xs">${t.assignee || 'Unassigned'}</span></td>
                     <td class="p-3 text-sm text-slate-500">${new Date(t.completedAt).toLocaleDateString()}</td>
-                    <td class="p-3 text-right font-mono text-indigo-600 dark:text-indigo-400">${formatTime(t.log['inprogress'])}</td>
+                    <td class="p-3 text-right font-mono text-indigo-600 dark:text-indigo-400">${formatTime(workTime)}</td>
                 `;
                 tbody.appendChild(tr);
             });
+
+            // ADD TOTAL ROW
+            const totalRow = document.createElement('tr');
+            totalRow.className = "bg-slate-100 dark:bg-slate-700/50 font-bold border-t-2 border-slate-300 dark:border-slate-500";
+            totalRow.innerHTML = `
+                <td colspan="3" class="p-3 text-right dark:text-white">TOTAL TIME SPENT:</td>
+                <td class="p-3 text-right font-mono text-indigo-600 dark:text-indigo-400">${formatTime(totalSeconds)}</td>
+            `;
+            tbody.appendChild(totalRow);
         }
     </script>
 </body>
