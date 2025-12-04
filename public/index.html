@@ -780,8 +780,13 @@
             
         if (!store.currentUser) {
             const h = now.getHours();
+            // Determine the base greeting based on time
             const timeBasedGreeting = (h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening");
+
             let greetingText;
+            // If Firebase has successfully initialized (db is not null), show the time-based greeting.
+            // If db is still null, it means we're in the "Connecting" state before a final outcome.
+            // (Note: enableOfflineMode() already explicitly sets the greeting to "Offline Mode" if connection fails.)
             if (db) { // Firebase is connected and db is available
                 greetingText = timeBasedGreeting + ".";
             } else { // db is null, so still connecting, or hasn't finished initializing.
