@@ -72,7 +72,7 @@
             border-color: #334155;
         }
         .calendar-day { 
-            min-height: 100px; /* Allow height to grow for full notes */
+            min-height: 100px; 
             display: flex; 
             flex-direction: column; 
             align-items: flex-start; 
@@ -94,7 +94,7 @@
         .calendar-day.today { background: #e0e7ff; color: #4338ca; font-weight: bold; }
         .dark .calendar-day.today { background: #312e81; color: #a5b4fc; }
 
-        /* Text Events in Calendar - JUSTIFIED & WRAPPED */
+        /* Text Events in Calendar */
         .cal-event-item {
             font-size: 0.65rem;
             line-height: 1.3;
@@ -104,12 +104,9 @@
             color: #065f46;
             margin-top: 2px;
             width: 100%;
-            
-            /* Text Wrapping Logic */
             white-space: normal; 
             word-break: break-word;
-            text-align: justify; /* Justified text */
-            
+            text-align: justify; 
             border-left: 2px solid #10b981;
         }
         .dark .cal-event-item {
@@ -118,6 +115,23 @@
             border-left: 2px solid #34d399;
         }
         .calendar-day-number { margin-bottom: 2px; }
+
+        /* Flag Urgency System */
+        .flag-btn {
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #cbd5e1; /* Default Slate-300 */
+        }
+        .dark .flag-btn { color: #475569; }
+        
+        /* Interactive Hover */
+        .flag-rating:hover .flag-btn { color: #ef4444; } /* Make all red on container hover */
+        .flag-btn:hover ~ .flag-btn { color: #cbd5e1; } /* Grey out ones after the hover */
+        .dark .flag-rating:hover .flag-btn { color: #ef4444; }
+        .dark .flag-btn:hover ~ .flag-btn { color: #475569; }
+
+        /* Active State handled by JS, but fallback styles */
+        .flag-btn.active { color: #ef4444; }
         
         /* Avatar Upload Overlay */
         .avatar-container:hover .avatar-overlay { opacity: 1; }
@@ -380,6 +394,19 @@
                 <p class="text-[10px] text-indigo-500 mt-1 hidden" id="assign-hint">Auto-assigned to you.</p>
             </div>
             
+            <div class="mb-3">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Urgency Level</label>
+                <div class="flex gap-3 text-xl flag-rating" id="priority-selector">
+                    <input type="hidden" id="task-priority" value="1">
+                    <i class="fas fa-flag flag-btn" data-val="1" onclick="setPriority(1)"></i>
+                    <i class="fas fa-flag flag-btn" data-val="2" onclick="setPriority(2)"></i>
+                    <i class="fas fa-flag flag-btn" data-val="3" onclick="setPriority(3)"></i>
+                    <i class="fas fa-flag flag-btn" data-val="4" onclick="setPriority(4)"></i>
+                    <i class="fas fa-flag flag-btn" data-val="5" onclick="setPriority(5)"></i>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-1" id="priority-text">Low Urgency</p>
+            </div>
+            
             <div class="mb-6">
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
                 <textarea id="task-desc" rows="3" class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"></textarea>
@@ -502,6 +529,7 @@
         window.triggerRestore = triggerRestore;
         window.handleRestore = handleRestore;
         window.exportReportCSV = exportReportCSV;
+        window.setPriority = setPriority;
         
         // Avatar
         window.triggerAvatarUpload = triggerAvatarUpload;
@@ -736,8 +764,7 @@
                 }
 
                 store.events[dateStr].push(entry);
-                // Sort events alphabetically (which sorts by time 00:00 -> 23:59 nicely)
-                store.events[dateStr].sort();
+                store.events[dateStr].sort(); // Simple alphabetical sort puts times in order
 
                 localStorage.setItem('nexus_events', JSON.stringify(store.events));
                 document.getElementById('new-event-input').value = '';
@@ -767,6 +794,7 @@
                     id: Date.now().toString(),
                     title: val, description: "", assignee: assignee,
                     status: status, createdAt: now, 
+                    priority: 1, // Default priority
                     completedAt: (status === 'done' ? now : null), 
                     lastMoved: now, log: { todo: 0, inprogress: 0, done: 0 } 
                 };
@@ -804,15 +832,33 @@
             }
         }
 
+        function setPriority(val) {
+            document.getElementById('task-priority').value = val;
+            const flags = document.querySelectorAll('.flag-btn');
+            const texts = ["Low Urgency", "Low Urgency", "Medium Urgency", "High Urgency", "Critical Urgency"];
+            
+            flags.forEach(f => {
+                if (parseInt(f.dataset.val) <= val) {
+                    f.classList.add('active');
+                    f.classList.remove('text-slate-300');
+                } else {
+                    f.classList.remove('active');
+                    f.classList.add('text-slate-300');
+                }
+            });
+            document.getElementById('priority-text').textContent = texts[val-1];
+        }
+
         function saveTask() {
             const id = document.getElementById('task-id').value;
             const title = document.getElementById('task-title').value;
             const desc = document.getElementById('task-desc').value;
+            const priority = parseInt(document.getElementById('task-priority').value) || 1;
             let assignee = document.getElementById('task-assignee').value;
             if (store.currentUser && assignee === "") assignee = store.currentUser;
             if(!title) return alert('Title required');
 
-            const taskData = { title, description: desc, assignee };
+            const taskData = { title, description: desc, assignee, priority };
 
             if(id) {
                 const t = store.kanbanTasks.find(x => x.id == id);
@@ -1045,6 +1091,18 @@
                         assigneeHtml = `<div class="bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">${icon} ${t.assignee}</div>`;
                     }
 
+                    // Render Priority Flags
+                    const priority = t.priority || 1; 
+                    let flagsHtml = '';
+                    let flagColor = 'text-slate-300'; // Default low
+                    if (priority >= 3) flagColor = 'text-amber-400';
+                    if (priority >= 4) flagColor = 'text-red-500';
+                    if (priority <= 2 && priority > 0) flagColor = 'text-emerald-400';
+
+                    for(let i=0; i<priority; i++) {
+                        flagsHtml += `<i class="fas fa-flag text-[10px] ${flagColor} ml-0.5"></i>`;
+                    }
+
                     el.innerHTML = `
                         <div class="flex justify-between items-start mb-2">
                             <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight">${t.title}</h4>
@@ -1055,7 +1113,10 @@
                             <div class="flex flex-col gap-1">
                                 ${assigneeHtml}
                             </div>
-                            ${timerHtml}
+                            <div class="flex flex-col items-end gap-1">
+                                <div>${flagsHtml}</div>
+                                ${timerHtml}
+                            </div>
                         </div>
                     `;
                     container.appendChild(el);
@@ -1068,10 +1129,12 @@
             const list = document.getElementById('quick-task-list');
             list.innerHTML = '';
             const myTasks = store.kanbanTasks.filter(t => {
-                // CHANGE: Hide done tasks completely
+                // Hide done tasks completely
                 if (t.status === 'done') return false;
                 return !store.currentUser || t.assignee === store.currentUser;
             }).sort((a, b) => {
+                // Sort by priority first (descending), then status
+                if ((b.priority || 1) !== (a.priority || 1)) return (b.priority || 1) - (a.priority || 1);
                 const map = { 'inprogress': 1, 'todo': 2 };
                 return map[a.status] - map[b.status];
             });
@@ -1093,13 +1156,23 @@
                     avatarHTML = `<div class="w-8 h-8 rounded-full bg-cover bg-center border border-slate-200 dark:border-slate-600" style="background-image: url('${store.avatars[assignedUser]}')"></div>`;
                 }
 
+                // Priority Indicator for list
+                let prioColor = 'text-slate-300';
+                const p = t.priority || 1;
+                if(p >= 3) prioColor = 'text-amber-400';
+                if(p >= 4) prioColor = 'text-red-500';
+                if(p <= 2) prioColor = 'text-emerald-400';
+
                 li.innerHTML = `
                     <div class="flex-shrink-0" title="Assigned to ${assignedUser}">
                         ${avatarHTML}
                     </div>
 
                     <div class="flex-1 min-w-0">
-                        <span class="dark:text-slate-200 font-medium truncate block" title="${t.title}">${t.title}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="dark:text-slate-200 font-medium truncate block" title="${t.title}">${t.title}</span>
+                            <span class="text-[10px] ${prioColor}"><i class="fas fa-flag"></i> ${p}</span>
+                        </div>
                     </div>
 
                     <div class="flex-shrink-0">
@@ -1193,10 +1266,12 @@
                 const t = store.kanbanTasks.find(x => x.id === id);
                 title.value = t.title; desc.value = t.description; assignee.value = t.assignee || "";
                 hiddenId.value = t.id; document.getElementById('modal-title').textContent = "Edit Task"; delBtn.classList.remove('hidden');
+                setPriority(t.priority || 1); // Set flags for existing task
             } else {
                 title.value = ''; desc.value = ''; hiddenId.value = '';
                 if(!store.currentUser) assignee.value = '';
                 document.getElementById('modal-title').textContent = "New Task"; delBtn.classList.add('hidden');
+                setPriority(1); // Default priority
             }
         }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
