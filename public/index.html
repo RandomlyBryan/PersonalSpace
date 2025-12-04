@@ -62,26 +62,51 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
         /* Calendar Styles */
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .calendar-grid { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            border-top: 1px solid #e2e8f0; 
+            border-left: 1px solid #e2e8f0;
+        }
+        .dark .calendar-grid {
+            border-color: #334155;
+        }
         .calendar-day { 
             aspect-ratio: 1; 
             display: flex; 
             flex-direction: column; 
-            align-items: center; 
-            justify-content: center;
-            border-radius: 8px; 
-            font-size: 0.8rem; 
+            align-items: flex-start; 
+            justify-content: flex-start;
+            padding: 4px;
+            font-size: 0.85rem; 
             cursor: pointer; 
             position: relative;
             transition: background 0.2s;
+            border-right: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+            background: rgba(255,255,255,0.4);
+        }
+        .dark .calendar-day {
+            border-color: #334155;
+            background: rgba(30, 41, 59, 0.4);
         }
         .calendar-day:hover { background: rgba(99, 102, 241, 0.2); }
-        .calendar-day.today { background: #4f46e5; color: white; font-weight: bold; }
+        .calendar-day.today { background: #e0e7ff; color: #4338ca; font-weight: bold; }
+        .dark .calendar-day.today { background: #312e81; color: #a5b4fc; }
+        
         .calendar-day.has-event::after {
             content: '';
-            width: 4px; height: 4px; background: #10b981; border-radius: 50%;
-            position: absolute; bottom: 4px;
+            width: 6px; height: 6px; 
+            background: #10b981; 
+            border-radius: 50%;
+            position: absolute; 
+            bottom: 6px;
+            left: 50%;
+            transform: translateX(-50%);
         }
+        
+        /* Avatar Upload Overlay */
+        .avatar-container:hover .avatar-overlay { opacity: 1; }
     </style>
 </head>
 <body class="text-slate-800 antialiased flex flex-col h-screen w-screen overflow-hidden">
@@ -89,6 +114,8 @@
     <div class="absolute top-0 left-1/2 transform -translate-x-1/2 bg-indigo-600 text-white px-3 py-1 text-[10px] rounded-b-lg shadow-lg z-50 font-bold opacity-90">
         <i class="fas fa-database mr-1"></i> Local Storage Mode (Auto-Saving)
     </div>
+
+    <input type="file" id="avatar-upload" class="hidden" accept="image/*" onchange="handleAvatarFile(this)">
 
     <div class="flex flex-1 overflow-hidden relative">
         <aside class="sidebar w-64 flex-shrink-0 flex flex-col justify-between h-full z-20 transition-all duration-300 transform -translate-x-full md:translate-x-0 absolute md:relative" id="main-sidebar">
@@ -133,7 +160,8 @@
                         <i class="fas fa-plus"></i>
                     </button>
                 </div>
-
+                
+                <p class="text-[9px] text-white/40 italic mb-2">Click avatar to upload photo</p>
                 <ul id="team-list" class="space-y-2 max-h-40 overflow-y-auto pr-1">
                     <li class="text-white/50 text-xs italic">Loading team...</li>
                 </ul>
@@ -186,54 +214,64 @@
                         </div>
                     </div>
 
-                    <div class="lg:col-span-1 glass-panel rounded-2xl p-6 flex flex-col h-full min-h-[400px]">
-                        <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-lg font-bold flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                                <i class="fas fa-calendar-alt"></i> Schedule
+                    <div class="lg:col-span-2 flex flex-col gap-6">
+                        
+                        <div class="glass-panel rounded-2xl p-6 flex flex-col min-h-[350px]">
+                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                                <i class="fas fa-check-circle"></i> My Tasks
                             </h2>
-                            <div class="flex gap-2 text-sm text-slate-600 dark:text-slate-300">
-                                <button onclick="changeMonth(-1)" class="hover:text-blue-500 w-6 h-6 flex items-center justify-center rounded hover:bg-black/5"><i class="fas fa-chevron-left"></i></button>
-                                <span id="calendar-month-year" class="font-bold w-28 text-center">...</span>
-                                <button onclick="changeMonth(1)" class="hover:text-blue-500 w-6 h-6 flex items-center justify-center rounded hover:bg-black/5"><i class="fas fa-chevron-right"></i></button>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-400 uppercase mb-2">
-                            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-                        </div>
-
-                        <div id="calendar-body" class="calendar-grid flex-1">
-                            </div>
-                        
-                        <div class="mt-2 text-center text-xs text-slate-400 italic">Click a date to add meetings</div>
-                    </div>
-
-                    <div class="lg:col-span-1 glass-panel rounded-2xl p-6 flex flex-col h-full min-h-[400px]">
-                        <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                            <i class="fas fa-check-circle"></i> My Tasks
-                        </h2>
-                        <div class="flex flex-col gap-2 mb-4">
-                            <input type="text" id="quick-task-input" placeholder="Add a task..." 
-                                class="w-full bg-slate-100 dark:bg-slate-700/50 border-0 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 outline-none dark:text-white">
                             
-                            <div class="flex gap-2">
-                                <select id="quick-task-status" class="flex-1 bg-slate-100 dark:bg-slate-700/50 border-0 rounded-lg px-2 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer">
-                                    <option value="todo">To Do</option>
-                                    <option value="inprogress">In Progress</option>
-                                    <option value="done">Completed</option>
-                                </select>
-                                <button onclick="addQuickTask()" class="bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg px-4 transition transform active:scale-95">
-                                    <i class="fas fa-plus"></i>
-                                </button>
+                            <div class="flex flex-col gap-2 mb-4 bg-slate-50 dark:bg-slate-700/30 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                                <input type="text" id="quick-task-input" placeholder="Task title..." 
+                                    class="w-full bg-white dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 outline-none dark:text-white">
+                                
+                                <div class="flex gap-2">
+                                    <select id="quick-task-assignee" class="flex-1 bg-white dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer">
+                                        <option value="">Unassigned</option>
+                                    </select>
+
+                                    <select id="quick-task-status" class="w-32 bg-white dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer">
+                                        <option value="todo">To Do</option>
+                                        <option value="inprogress">In Progress</option>
+                                        <option value="done">Completed</option>
+                                    </select>
+                                    
+                                    <button onclick="addQuickTask()" class="bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg px-4 transition transform active:scale-95 shadow-lg shadow-emerald-500/30">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <div class="grid grid-cols-12 gap-2 text-xs font-bold text-slate-400 uppercase mb-2 px-3">
-                            <div class="col-span-8">Task</div>
-                            <div class="col-span-4 text-right">Status</div>
+                            
+                            <div class="flex justify-between px-3 text-xs font-bold text-slate-400 uppercase mb-2">
+                                <span>Task Details</span>
+                                <span>Status</span>
+                            </div>
+
+                            <ul id="quick-task-list" class="flex-1 overflow-y-auto space-y-2 pr-2"></ul>
                         </div>
 
-                        <ul id="quick-task-list" class="flex-1 overflow-y-auto space-y-2 pr-2"></ul>
+                        <div class="glass-panel rounded-2xl p-6 flex flex-col">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-bold flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                                    <i class="fas fa-calendar-alt"></i> Schedule
+                                </h2>
+                                <div class="flex gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                    <button onclick="changeMonth(-1)" class="hover:text-blue-500 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"><i class="fas fa-chevron-left"></i></button>
+                                    <span id="calendar-month-year" class="font-bold w-32 text-center flex items-center justify-center text-lg">...</span>
+                                    <button onclick="changeMonth(1)" class="hover:text-blue-500 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"><i class="fas fa-chevron-right"></i></button>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-7 text-center text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-0 border-b border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 py-2 rounded-t-lg">
+                                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                            </div>
+
+                            <div id="calendar-body" class="calendar-grid flex-1">
+                                </div>
+                            
+                            <div class="mt-2 text-center text-xs text-slate-400 italic">Click a date to add meetings</div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -384,6 +422,7 @@
             currentUser: null,
             users: [],
             kanbanTasks: [],
+            avatars: {}, // Maps username -> base64 string
             focus: '',
             notes: '',
             // Calendar
@@ -393,6 +432,7 @@
         };
         
         let draggedItem = null;
+        let uploadingUser = null;
 
         // --- EXPOSE FUNCTIONS ---
         window.switchUser = switchUser;
@@ -403,8 +443,8 @@
         window.saveFocus = saveFocus;
         window.saveNotes = saveNotes;
         window.addQuickTask = addQuickTask;
-        window.quickCycleStatus = quickCycleStatus;
         window.deleteQuickTask = deleteQuickTask;
+        window.updateTaskStatus = updateTaskStatus;
         window.openTaskModal = openTaskModal;
         window.closeModal = closeModal;
         window.saveTask = saveTask;
@@ -412,6 +452,10 @@
         window.toggleReportModal = toggleReportModal;
         window.generateReport = generateReport;
         
+        // Avatar
+        window.triggerAvatarUpload = triggerAvatarUpload;
+        window.handleAvatarFile = handleAvatarFile;
+
         // Calendar
         window.changeMonth = changeMonth;
         window.openCalendarModal = openCalendarModal;
@@ -447,6 +491,7 @@
             store.users = JSON.parse(localStorage.getItem('nexus_users')) || [];
             store.kanbanTasks = JSON.parse(localStorage.getItem('nexus_kanban')) || [];
             store.events = JSON.parse(localStorage.getItem('nexus_events')) || {};
+            store.avatars = JSON.parse(localStorage.getItem('nexus_avatars')) || {};
 
             renderTeamList();
             renderKanbanBoard();
@@ -500,6 +545,38 @@
             renderQuickTasks(); 
         }
 
+        // --- AVATAR UPLOAD LOGIC ---
+        function triggerAvatarUpload(username) {
+            uploadingUser = username;
+            document.getElementById('avatar-upload').click();
+        }
+
+        function handleAvatarFile(input) {
+            if (input.files && input.files[0] && uploadingUser) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Img = e.target.result;
+                    
+                    // Simple size check (approx 500KB)
+                    if(base64Img.length > 700000) {
+                        alert("Image too large. Please use a smaller image (<500KB).");
+                        return;
+                    }
+
+                    store.avatars[uploadingUser] = base64Img;
+                    localStorage.setItem('nexus_avatars', JSON.stringify(store.avatars));
+                    
+                    // Refresh UIs
+                    renderTeamList();
+                    renderQuickTasks();
+                    renderKanbanBoard();
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+            // Reset input so same file can be selected again
+            input.value = '';
+        }
+
         // --- SAVING ---
         function saveFocus(val) {
             store.focus = val;
@@ -534,7 +611,9 @@
 
             // Padding days
             for(let i=0; i<firstDay; i++) {
-                grid.innerHTML += '<div></div>';
+                const pad = document.createElement('div');
+                pad.className = "bg-slate-50/50 dark:bg-slate-800/50 border-r border-b border-slate-200 dark:border-slate-700";
+                grid.appendChild(pad);
             }
 
             // Days
@@ -601,9 +680,9 @@
         function addQuickTask() {
             const val = document.getElementById('quick-task-input').value.trim();
             const status = document.getElementById('quick-task-status').value;
+            const assignee = document.getElementById('quick-task-assignee').value || store.currentUser || "Unassigned";
             
             if(val) {
-                const assignee = store.currentUser || "Unassigned";
                 const now = Date.now();
                 const newTask = { 
                     id: Date.now().toString(),
@@ -619,14 +698,6 @@
                 
                 document.getElementById('quick-task-input').value = '';
             }
-        }
-
-        function quickCycleStatus(id, currentStatus) {
-            let nextStatus = 'todo';
-            if (currentStatus === 'todo') nextStatus = 'inprogress';
-            else if (currentStatus === 'inprogress') nextStatus = 'done';
-            else if (currentStatus === 'done') nextStatus = 'todo';
-            updateTaskStatus(id, nextStatus);
         }
 
         function deleteQuickTask(id) {
@@ -714,15 +785,30 @@
             const taskDropdown = document.getElementById('task-assignee');
             taskDropdown.innerHTML = '<option value="">Unassigned</option>';
 
+            const quickTaskAssignee = document.getElementById('quick-task-assignee');
+            if(quickTaskAssignee) {
+                quickTaskAssignee.innerHTML = '<option value="">Assign to...</option>';
+            }
+
             const userSwitcher = document.getElementById('user-switcher');
             userSwitcher.innerHTML = '<option value="" class="text-slate-800 font-bold">★ Main Workspace (Admin)</option>';
 
             store.users.forEach((user, index) => {
                 const li = document.createElement('li');
                 li.className = 'flex justify-between items-center text-sm text-white/80 bg-white/5 px-2 py-1 rounded hover:bg-white/10 transition group';
+                
+                // Avatar Rendering
+                let avatarHTML = `<div class="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] text-white font-bold">${user.charAt(0).toUpperCase()}</div>`;
+                if(store.avatars[user]) {
+                    avatarHTML = `<div class="w-5 h-5 rounded-full bg-cover bg-center border border-white/20" style="background-image: url('${store.avatars[user]}')"></div>`;
+                }
+
                 li.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <div class="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] text-white font-bold">${user.charAt(0).toUpperCase()}</div>
+                    <div class="flex items-center gap-2 cursor-pointer avatar-container relative" onclick="triggerAvatarUpload('${user}')">
+                        ${avatarHTML}
+                        <div class="avatar-overlay absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 transition">
+                            <i class="fas fa-camera text-[8px] text-white"></i>
+                        </div>
                         <span>${user}</span>
                     </div>
                     <button onclick="removeMember(${index})" class="opacity-0 group-hover:opacity-100 hover:text-red-400"><i class="fas fa-times"></i></button>
@@ -732,6 +818,12 @@
                 const opt = document.createElement('option');
                 opt.value = user; opt.textContent = user;
                 taskDropdown.appendChild(opt);
+
+                if(quickTaskAssignee) {
+                    const opt2 = document.createElement('option');
+                    opt2.value = user; opt2.textContent = user;
+                    quickTaskAssignee.appendChild(opt2);
+                }
 
                 const switchOpt = document.createElement('option');
                 switchOpt.value = user; switchOpt.textContent = user; switchOpt.className = "text-slate-800";
@@ -776,8 +868,16 @@
                         timerHtml = `<div class="text-xs text-emerald-600 font-medium flex items-center gap-1"><i class="fas fa-check-circle"></i> <span>${formatTime(totalWorkTime)}</span></div>`;
                     }
 
+                    // Assignee with Avatar Check
                     let assigneeHtml = '';
-                    if (t.assignee) assigneeHtml = `<div class="bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1"><i class="fas fa-user"></i> ${t.assignee}</div>`;
+                    if (t.assignee) {
+                        const hasImg = store.avatars[t.assignee];
+                        const icon = hasImg 
+                            ? `<div class="w-4 h-4 rounded-full bg-cover bg-center border border-indigo-200" style="background-image: url('${hasImg}')"></div>` 
+                            : `<i class="fas fa-user"></i>`;
+                        
+                        assigneeHtml = `<div class="bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">${icon} ${t.assignee}</div>`;
+                    }
 
                     el.innerHTML = `
                         <div class="flex justify-between items-start mb-2">
@@ -815,27 +915,35 @@
 
             myTasks.forEach(t => {
                 const li = document.createElement('li');
-                li.className = 'grid grid-cols-12 gap-2 items-center p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 group transition hover:shadow-md';
+                li.className = 'flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 group transition hover:shadow-md';
                 
-                let statusClass = "bg-slate-100 text-slate-500";
-                let statusLabel = "To Do";
-                if(t.status === 'inprogress') { statusClass = "bg-indigo-100 text-indigo-600"; statusLabel = "In Progress"; }
-                if(t.status === 'done') { statusClass = "bg-emerald-100 text-emerald-600"; statusLabel = "Completed"; }
+                // Avatar Rendering
+                const assignedUser = t.assignee || "?";
+                let avatarHTML = `<div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold text-xs">${assignedUser.charAt(0).toUpperCase()}</div>`;
+                
+                if(store.avatars[assignedUser]) {
+                    avatarHTML = `<div class="w-8 h-8 rounded-full bg-cover bg-center border border-slate-200 dark:border-slate-600" style="background-image: url('${store.avatars[assignedUser]}')"></div>`;
+                }
 
                 li.innerHTML = `
-                    <div class="col-span-1 flex justify-center">
-                        <button onclick="quickCycleStatus('${t.id}', '${t.status}')" class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition ${t.status === 'done' ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 hover:border-indigo-500'}">
-                            ${t.status === 'done' ? '<i class="fas fa-check text-[10px]"></i>' : ''}
-                        </button>
+                    <div class="flex-shrink-0" title="Assigned to ${assignedUser}">
+                        ${avatarHTML}
                     </div>
-                    <div class="col-span-7 overflow-hidden">
+
+                    <div class="flex-1 min-w-0">
                         <span class="${t.status === 'done' ? 'line-through text-slate-400' : 'dark:text-slate-200 font-medium'} truncate block" title="${t.title}">${t.title}</span>
                     </div>
-                    <div class="col-span-3 text-right">
-                        <span class="${statusClass} text-[10px] uppercase font-bold px-2 py-1 rounded-full whitespace-nowrap">${statusLabel}</span>
+
+                    <div class="flex-shrink-0">
+                        <select onchange="updateTaskStatus('${t.id}', this.value)" class="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-2 py-1 text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 outline-none cursor-pointer">
+                            <option value="todo" ${t.status === 'todo' ? 'selected' : ''}>To Do</option>
+                            <option value="inprogress" ${t.status === 'inprogress' ? 'selected' : ''}>In Progress</option>
+                            <option value="done" ${t.status === 'done' ? 'selected' : ''}>Done</option>
+                        </select>
                     </div>
-                    <div class="col-span-1 text-right">
-                        <button onclick="deleteQuickTask('${t.id}')" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-trash"></i></button>
+
+                    <div class="flex-shrink-0">
+                        <button onclick="deleteQuickTask('${t.id}')" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition px-2"><i class="fas fa-trash"></i></button>
                     </div>
                 `;
                 list.appendChild(li);
