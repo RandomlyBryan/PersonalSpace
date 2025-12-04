@@ -85,6 +85,7 @@
             border-right: 1px solid #e2e8f0;
             border-bottom: 1px solid #e2e8f0;
             background: rgba(255,255,255,0.4);
+            overflow: hidden; /* Keep content inside */
         }
         .dark .calendar-day {
             border-color: #334155;
@@ -93,16 +94,29 @@
         .calendar-day:hover { background: rgba(99, 102, 241, 0.2); }
         .calendar-day.today { background: #e0e7ff; color: #4338ca; font-weight: bold; }
         .dark .calendar-day.today { background: #312e81; color: #a5b4fc; }
-        
-        .calendar-day.has-event::after {
-            content: '';
-            width: 6px; height: 6px; 
-            background: #10b981; 
-            border-radius: 50%;
-            position: absolute; 
-            bottom: 6px;
-            left: 50%;
-            transform: translateX(-50%);
+
+        /* New Event Styles (Text Based) */
+        .cal-event-item {
+            font-size: 0.6rem;
+            line-height: 1;
+            padding: 2px 4px;
+            border-radius: 2px;
+            background: rgba(16, 185, 129, 0.2);
+            color: #065f46;
+            margin-top: 2px;
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-left: 2px solid #10b981;
+        }
+        .dark .cal-event-item {
+            background: rgba(16, 185, 129, 0.4);
+            color: #d1fae5;
+            border-left: 2px solid #34d399;
+        }
+        .calendar-day-number {
+            margin-bottom: 2px;
         }
         
         /* Avatar Upload Overlay */
@@ -116,6 +130,7 @@
     </div>
 
     <input type="file" id="avatar-upload" class="hidden" accept="image/*" onchange="handleAvatarFile(this)">
+    <input type="file" id="restore-upload" class="hidden" accept=".json" onchange="handleRestore(this)">
 
     <div class="flex flex-1 overflow-hidden relative">
         <aside class="sidebar w-64 flex-shrink-0 flex flex-col justify-between h-full z-20 transition-all duration-300 transform -translate-x-full md:translate-x-0 absolute md:relative" id="main-sidebar">
@@ -172,7 +187,17 @@
                     <span>&copy; 2025 PersonalSpace</span>
                     <button onclick="toggleTheme()" class="hover:text-white transition" title="Toggle Theme"><i class="fas fa-moon" id="theme-icon"></i></button>
                 </div>
-                <button onclick="clearAllData()" class="text-left text-[10px] text-red-300 hover:text-red-100 transition flex items-center gap-2">
+                
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="backupData()" class="bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-200 text-[10px] py-1 rounded transition flex items-center justify-center gap-1">
+                        <i class="fas fa-download"></i> Backup
+                    </button>
+                    <button onclick="triggerRestore()" class="bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-200 text-[10px] py-1 rounded transition flex items-center justify-center gap-1">
+                        <i class="fas fa-upload"></i> Restore
+                    </button>
+                </div>
+
+                <button onclick="clearAllData()" class="text-left text-[10px] text-red-300 hover:text-red-100 transition flex items-center gap-2 mt-1">
                     <i class="fas fa-trash-alt"></i> Reset All Data
                 </button>
             </div>
@@ -402,7 +427,17 @@
                     <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">To</label>
                     <input type="date" id="report-end" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm dark:text-white">
                 </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">User</label>
+                    <select id="report-user-filter" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm dark:text-white outline-none w-32">
+                        <option value="">All Users</option>
+                    </select>
+                </div>
                 <button onclick="generateReport()" class="bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-600 h-[38px]">Apply</button>
+                
+                <button onclick="exportReportCSV()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 h-[38px] ml-auto">
+                    <i class="fas fa-file-csv mr-1"></i> Export CSV
+                </button>
             </div>
             <div class="flex-1 overflow-auto">
                 <table class="w-full text-left text-sm">
@@ -456,7 +491,11 @@
         window.deleteCurrentTask = deleteCurrentTask;
         window.toggleReportModal = toggleReportModal;
         window.generateReport = generateReport;
-        window.clearAllData = clearAllData; // NEW
+        window.clearAllData = clearAllData;
+        window.backupData = backupData;
+        window.triggerRestore = triggerRestore;
+        window.handleRestore = handleRestore;
+        window.exportReportCSV = exportReportCSV;
         
         // Avatar
         window.triggerAvatarUpload = triggerAvatarUpload;
@@ -626,11 +665,26 @@
             for(let d=1; d<=daysInMonth; d++) {
                 const dateKey = `${store.calendarYear}-${String(store.calendarMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const isToday = (today.getDate() === d && today.getMonth() === store.calendarMonth && today.getFullYear() === store.calendarYear);
-                const hasEvents = store.events[dateKey] && store.events[dateKey].length > 0;
+                const events = store.events[dateKey] || [];
                 
                 const el = document.createElement('div');
-                el.className = `calendar-day ${isToday ? 'today' : ''} ${hasEvents ? 'has-event' : ''}`;
-                el.textContent = d;
+                el.className = `calendar-day ${isToday ? 'today' : ''}`;
+                
+                // Day Number
+                const num = document.createElement('div');
+                num.className = "calendar-day-number";
+                num.textContent = d;
+                el.appendChild(num);
+                
+                // Render Events as Text
+                events.forEach(evt => {
+                    const evtDiv = document.createElement('div');
+                    evtDiv.className = "cal-event-item";
+                    evtDiv.textContent = evt;
+                    evtDiv.title = evt; // Tooltip for full text
+                    el.appendChild(evtDiv);
+                });
+
                 el.onclick = () => openCalendarModal(dateKey);
                 grid.appendChild(el);
             }
@@ -670,7 +724,7 @@
                 localStorage.setItem('nexus_events', JSON.stringify(store.events));
                 document.getElementById('new-event-input').value = '';
                 renderDayEvents(dateStr);
-                renderCalendar(); // Update dots
+                renderCalendar(); 
             }
         }
 
@@ -782,12 +836,77 @@
             }
         }
         
-        // --- NEW: CLEAR DATA ---
+        // --- DATA MANAGEMENT ---
         function clearAllData() {
             if(confirm("WARNING: This will delete ALL tasks, users, and settings. This cannot be undone.\n\nAre you sure?")) {
                 localStorage.clear();
                 location.reload();
             }
+        }
+
+        function backupData() {
+            const data = {};
+            // Loop through all keys in localStorage that start with 'nexus_'
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('nexus_')) {
+                    data[key] = localStorage.getItem(key);
+                }
+            }
+            
+            if (Object.keys(data).length === 0) {
+                alert("No data to backup.");
+                return;
+            }
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type : 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const date = new Date().toISOString().split('T')[0];
+            a.download = `personalspace_backup_${date}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function triggerRestore() {
+            document.getElementById('restore-upload').click();
+        }
+
+        function handleRestore(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (!confirm("This will overwrite your current data with the backup. Continue?")) return;
+
+                        // Clear current nexus keys
+                        const keysToRemove = [];
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const key = localStorage.key(i);
+                            if (key.startsWith('nexus_')) keysToRemove.push(key);
+                        }
+                        keysToRemove.forEach(k => localStorage.removeItem(k));
+
+                        // Set new keys
+                        Object.keys(data).forEach(key => {
+                            if (key.startsWith('nexus_')) {
+                                localStorage.setItem(key, data[key]);
+                            }
+                        });
+
+                        alert("Data restored successfully!");
+                        location.reload();
+
+                    } catch (err) {
+                        alert("Error parsing backup file. Please ensure it is a valid JSON backup.");
+                        console.error(err);
+                    }
+                }
+                reader.readAsText(input.files[0]);
+            }
+            input.value = '';
         }
 
         // --- RENDER UTILS ---
@@ -802,6 +921,13 @@
             const quickTaskAssignee = document.getElementById('quick-task-assignee');
             if(quickTaskAssignee) {
                 quickTaskAssignee.innerHTML = '<option value="">Assign to...</option>';
+            }
+
+            const reportUserFilter = document.getElementById('report-user-filter');
+            // Preserve current selection if possible, else default to empty
+            const currentReportFilter = reportUserFilter ? reportUserFilter.value : "";
+            if(reportUserFilter) {
+                reportUserFilter.innerHTML = '<option value="">All Users</option>';
             }
 
             const userSwitcher = document.getElementById('user-switcher');
@@ -837,6 +963,13 @@
                     const opt2 = document.createElement('option');
                     opt2.value = user; opt2.textContent = user;
                     quickTaskAssignee.appendChild(opt2);
+                }
+
+                if(reportUserFilter) {
+                    const opt3 = document.createElement('option');
+                    opt3.value = user; opt3.textContent = user;
+                    if(user === currentReportFilter) opt3.selected = true;
+                    reportUserFilter.appendChild(opt3);
                 }
 
                 const switchOpt = document.createElement('option');
@@ -1057,10 +1190,16 @@
         function generateReport() {
             const start = new Date(document.getElementById('report-start').value).setHours(0,0,0,0);
             const end = new Date(document.getElementById('report-end').value).setHours(23,59,59,999);
+            const userFilter = document.getElementById('report-user-filter').value;
             const tbody = document.getElementById('report-body');
             tbody.innerHTML = '';
 
-            const completed = store.kanbanTasks.filter(t => t.status === 'done' && t.completedAt >= start && t.completedAt <= end);
+            const completed = store.kanbanTasks.filter(t => {
+                if(t.status !== 'done') return false;
+                if(t.completedAt < start || t.completedAt > end) return false;
+                if(userFilter && t.assignee !== userFilter) return false;
+                return true;
+            });
 
             if(completed.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">No data found.</td></tr>';
@@ -1092,6 +1231,45 @@
                 <td class="p-3 text-right font-mono text-indigo-600 dark:text-indigo-400">${formatTime(totalSeconds)}</td>
             `;
             tbody.appendChild(totalRow);
+        }
+
+        function exportReportCSV() {
+            const start = new Date(document.getElementById('report-start').value).setHours(0,0,0,0);
+            const end = new Date(document.getElementById('report-end').value).setHours(23,59,59,999);
+            const userFilter = document.getElementById('report-user-filter').value;
+            
+            const completed = store.kanbanTasks.filter(t => {
+                if(t.status !== 'done') return false;
+                if(t.completedAt < start || t.completedAt > end) return false;
+                if(userFilter && t.assignee !== userFilter) return false;
+                return true;
+            });
+
+            if(completed.length === 0) {
+                alert("No completed tasks to export in this date range/filter.");
+                return;
+            }
+
+            // CSV Headers
+            let csvContent = "Task Title,Assignee,Completed Date,Work Duration\n";
+
+            completed.forEach(t => {
+                const workTime = t.log['inprogress'] || 0;
+                const formattedTime = formatTime(workTime);
+                const dateStr = new Date(t.completedAt).toLocaleDateString();
+                // Escape quotes in title
+                const cleanTitle = t.title.replace(/"/g, '""');
+                
+                csvContent += `"${cleanTitle}","${t.assignee || 'Unassigned'}","${dateStr}","${formattedTime}"\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `report_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
         }
     </script>
 </body>
