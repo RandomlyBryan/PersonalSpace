@@ -526,6 +526,21 @@
                         <option value="">All Users</option>
                     </select>
                 </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Day</label>
+                    <select id="report-day-filter" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm dark:text-white outline-none w-32">
+                        <option value="">Any Day</option>
+                        <option value="Sunday">Sunday</option>
+                        <option value="Monday">Monday</option>
+                        <option value="Tuesday">Tuesday</option>
+                        <option value="Wednesday">Wednesday</option>
+                        <option value="Thursday">Thursday</option>
+                        <option value="Friday">Friday</option>
+                        <option value="Saturday">Saturday</option>
+                    </select>
+                </div>
+
                 <button onclick="generateReport()" class="bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-600 h-[38px]">Apply</button>
                 
                 <button onclick="exportReportCSV()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 h-[38px] ml-auto">
@@ -1437,6 +1452,7 @@
             const start = new Date(document.getElementById('report-start').value).setHours(0,0,0,0);
             const end = new Date(document.getElementById('report-end').value).setHours(23,59,59,999);
             const userFilter = document.getElementById('report-user-filter').value;
+            const dayFilter = document.getElementById('report-day-filter').value; // New Day Filter
             const tbody = document.getElementById('report-body');
             tbody.innerHTML = '';
 
@@ -1444,6 +1460,7 @@
                 if(t.status !== 'done') return false;
                 if(t.completedAt < start || t.completedAt > end) return false;
                 if(userFilter && t.assignee !== userFilter) return false;
+                if(dayFilter && t.assignedDay !== dayFilter) return false; // Filter logic
                 return true;
             });
 
@@ -1482,11 +1499,13 @@
             const start = new Date(document.getElementById('report-start').value).setHours(0,0,0,0);
             const end = new Date(document.getElementById('report-end').value).setHours(23,59,59,999);
             const userFilter = document.getElementById('report-user-filter').value;
+            const dayFilter = document.getElementById('report-day-filter').value;
             
             const completed = store.kanbanTasks.filter(t => {
                 if(t.status !== 'done') return false;
                 if(t.completedAt < start || t.completedAt > end) return false;
                 if(userFilter && t.assignee !== userFilter) return false;
+                if(dayFilter && t.assignedDay !== dayFilter) return false;
                 return true;
             });
 
