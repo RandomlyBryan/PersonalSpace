@@ -78,8 +78,8 @@
         /* --- FIXED CALENDAR DAY CSS --- */
         .calendar-day { 
             min-height: 80px; 
-            max-height: 110px; /* FIXED: Limit height to prevent overlap */
-            overflow-y: auto;  /* FIXED: Scroll if content is too long */
+            max-height: 110px; 
+            overflow-y: auto;  
             overflow-x: hidden;
             display: flex; 
             flex-direction: column; 
@@ -94,8 +94,6 @@
             border-bottom: 1px solid #e2e8f0;
             background: rgba(255,255,255,0.4);
         }
-        
-        /* Specific scrollbar for calendar cells */
         .calendar-day::-webkit-scrollbar { width: 2px; }
         .calendar-day::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); }
         /* ------------------------------ */
@@ -142,17 +140,18 @@
         }
         .dark .flag-btn { color: #475569; }
         
-        /* Interactive Hover */
-        .flag-rating:hover .flag-btn { color: #ef4444; } /* Make all red on container hover */
-        .flag-btn:hover ~ .flag-btn { color: #cbd5e1; } /* Grey out ones after the hover */
+        .flag-rating:hover .flag-btn { color: #ef4444; } 
+        .flag-btn:hover ~ .flag-btn { color: #cbd5e1; } 
         .dark .flag-rating:hover .flag-btn { color: #ef4444; }
         .dark .flag-btn:hover ~ .flag-btn { color: #475569; }
-
-        /* Active State handled by JS, but fallback styles */
         .flag-btn.active { color: #ef4444; }
         
         /* Avatar Upload Overlay */
         .avatar-container:hover .avatar-overlay { opacity: 1; }
+        
+        /* View Toggle Animation */
+        .view-btn { transition: all 0.2s; }
+        .view-btn.active { background-color: rgba(255,255,255,0.2); font-weight: bold; border: 1px solid rgba(255,255,255,0.4); }
     </style>
 </head>
 <body class="text-slate-800 antialiased flex flex-col h-screen w-screen overflow-hidden">
@@ -348,15 +347,21 @@
 
             <div id="view-kanban" class="flex-1 overflow-hidden p-4 md:p-6 fade-in hidden flex-col h-full">
                 
-                <div class="flex flex-col md:flex-row justify-between items-center mb-6 shrink-0 text-white">
-                    <div>
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 shrink-0 text-white gap-4">
+                    <div class="flex-1">
                         <h2 class="text-2xl font-bold flex items-center gap-2">
                             Task Tracker 
                             <span id="tracker-badge" class="text-xs bg-white/20 px-2 py-0.5 rounded text-white/80 font-normal">Main View</span>
                         </h2>
                         <p class="text-sm opacity-80" id="tracker-subtitle">Showing all project tasks</p>
                     </div>
-                    <div class="flex gap-2 mt-2 md:mt-0">
+
+                    <div class="bg-black/20 p-1 rounded-lg flex text-xs font-bold">
+                        <button onclick="switchKanbanView('status')" id="btn-view-status" class="view-btn active px-3 py-1.5 rounded text-white">Status</button>
+                        <button onclick="switchKanbanView('week')" id="btn-view-week" class="view-btn px-3 py-1.5 rounded text-white text-opacity-70 hover:text-opacity-100">Week View</button>
+                    </div>
+
+                    <div class="flex gap-2">
                         <button onclick="toggleReportModal()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg backdrop-blur transition flex items-center gap-2 text-sm">
                             <i class="fas fa-chart-pie"></i> Report
                         </button>
@@ -366,7 +371,7 @@
                     </div>
                 </div>
 
-                <div class="flex-1 overflow-x-auto overflow-y-hidden pb-2">
+                <div id="kanban-status-view" class="flex-1 overflow-x-auto overflow-y-hidden pb-2 h-full">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 h-full min-w-[800px] md:min-w-0">
                         
                         <div class="glass-panel rounded-xl flex flex-col h-full border-t-4 border-slate-400">
@@ -374,7 +379,7 @@
                                 <h3 class="font-bold text-slate-700 dark:text-slate-200">To Do</h3>
                                 <span id="count-todo" class="bg-slate-200 dark:bg-slate-700 text-xs px-2 py-1 rounded-full">0</span>
                             </div>
-                            <div class="column-body p-3 flex-1 overflow-y-auto space-y-3" ondrop="drop(event, 'todo')" ondragover="allowDrop(event)"></div>
+                            <div class="column-body p-3 flex-1 overflow-y-auto space-y-3" ondrop="drop(event, 'todo', 'status')" ondragover="allowDrop(event)"></div>
                         </div>
 
                         <div class="glass-panel rounded-xl flex flex-col h-full border-t-4 border-indigo-500">
@@ -382,7 +387,7 @@
                                 <h3 class="font-bold text-indigo-600 dark:text-indigo-400">In Progress</h3>
                                 <span id="count-inprogress" class="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 text-xs px-2 py-1 rounded-full">0</span>
                             </div>
-                            <div class="column-body p-3 flex-1 overflow-y-auto space-y-3" ondrop="drop(event, 'inprogress')" ondragover="allowDrop(event)"></div>
+                            <div class="column-body p-3 flex-1 overflow-y-auto space-y-3" ondrop="drop(event, 'inprogress', 'status')" ondragover="allowDrop(event)"></div>
                         </div>
 
                         <div class="glass-panel rounded-xl flex flex-col h-full border-t-4 border-emerald-500">
@@ -390,11 +395,18 @@
                                 <h3 class="font-bold text-emerald-600 dark:text-emerald-400">Completed</h3>
                                 <span id="count-done" class="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 text-xs px-2 py-1 rounded-full">0</span>
                             </div>
-                            <div class="column-body p-3 flex-1 overflow-y-auto space-y-3" ondrop="drop(event, 'done')" ondragover="allowDrop(event)"></div>
+                            <div class="column-body p-3 flex-1 overflow-y-auto space-y-3" ondrop="drop(event, 'done', 'status')" ondragover="allowDrop(event)"></div>
                         </div>
 
                     </div>
                 </div>
+
+                <div id="kanban-week-view" class="flex-1 overflow-x-auto overflow-y-hidden pb-2 h-full hidden">
+                    <div class="grid grid-cols-7 gap-2 h-full min-w-[1400px]">
+                        <div id="week-columns-container" class="contents"></div>
+                    </div>
+                </div>
+
             </div>
         </main>
     </div>
@@ -409,12 +421,26 @@
                 <input type="text" id="task-title" class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white">
             </div>
 
-            <div class="mb-3">
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Assign To</label>
-                <select id="task-assignee" class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white">
-                    <option value="">Unassigned</option>
-                </select>
-                <p class="text-[10px] text-indigo-500 mt-1 hidden" id="assign-hint">Auto-assigned to you.</p>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Assign To</label>
+                    <select id="task-assignee" class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white">
+                        <option value="">Unassigned</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Day</label>
+                    <select id="task-day" class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white">
+                        <option value="">Unscheduled</option>
+                        <option value="Sunday">Sunday</option>
+                        <option value="Monday">Monday</option>
+                        <option value="Tuesday">Tuesday</option>
+                        <option value="Wednesday">Wednesday</option>
+                        <option value="Thursday">Thursday</option>
+                        <option value="Friday">Friday</option>
+                        <option value="Saturday">Saturday</option>
+                    </select>
+                </div>
             </div>
             
             <div class="mb-3">
@@ -529,13 +555,14 @@
             currentUser: null,
             users: [],
             kanbanTasks: [],
-            avatars: {}, // Maps username -> base64 string
+            avatars: {}, 
             focus: '',
             notes: '',
-            // Calendar
-            events: {}, // Format: { "YYYY-MM-DD": ["Event 1", "Event 2"] }
+            events: {}, 
             calendarMonth: new Date().getMonth(),
-            calendarYear: new Date().getFullYear()
+            calendarYear: new Date().getFullYear(),
+            // New: view mode state
+            kanbanMode: 'status' // 'status' or 'week'
         };
         
         let draggedItem = null;
@@ -544,6 +571,7 @@
         // --- EXPOSE FUNCTIONS ---
         window.switchUser = switchUser;
         window.switchView = switchView;
+        window.switchKanbanView = switchKanbanView;
         window.addMember = addMember;
         window.removeMember = removeMember;
         window.toggleTheme = toggleTheme;
@@ -566,11 +594,9 @@
         window.exportReportCSV = exportReportCSV;
         window.setPriority = setPriority;
         
-        // Avatar
         window.triggerAvatarUpload = triggerAvatarUpload;
         window.handleAvatarFile = handleAvatarFile;
 
-        // Calendar
         window.changeMonth = changeMonth;
         window.openCalendarModal = openCalendarModal;
         window.addEvent = addEvent;
@@ -580,11 +606,16 @@
         window.dragStart = (e, id) => { draggedItem = id; e.target.classList.add('dragging'); };
         window.dragEnd = (e) => { e.target.classList.remove('dragging'); document.querySelectorAll('.column-body').forEach(c => c.classList.remove('drag-over')); };
         window.allowDrop = (e) => { e.preventDefault(); e.target.closest('.column-body')?.classList.add('drag-over'); };
-        window.drop = (e, status) => {
+        
+        window.drop = (e, val, type) => {
             e.preventDefault();
             const col = e.target.closest('.column-body');
             col?.classList.remove('drag-over');
-            if(draggedItem) { updateTaskStatus(draggedItem, status); draggedItem = null; }
+            if(draggedItem) { 
+                if(type === 'status') updateTaskStatus(draggedItem, val); 
+                if(type === 'day') updateTaskDay(draggedItem, val);
+                draggedItem = null; 
+            }
         };
 
         // --- INIT ---
@@ -608,6 +639,7 @@
             store.avatars = JSON.parse(localStorage.getItem('nexus_avatars')) || {};
 
             renderTeamList();
+            generateWeekColumns(); // Prepare week layout
             renderKanbanBoard();
             renderCalendar();
             
@@ -620,7 +652,6 @@
             store.currentUser = userName || null;
             document.getElementById('user-switcher').value = userName;
             
-            // Load User Specific Data
             const key = `nexus_${store.currentUser || 'admin'}`;
             store.focus = localStorage.getItem(`${key}_focus`) || '';
             store.notes = localStorage.getItem(`${key}_notes`) || '';
@@ -670,24 +701,18 @@
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const base64Img = e.target.result;
-                    
-                    // Simple size check (approx 500KB)
                     if(base64Img.length > 700000) {
                         alert("Image too large. Please use a smaller image (<500KB).");
                         return;
                     }
-
                     store.avatars[uploadingUser] = base64Img;
                     localStorage.setItem('nexus_avatars', JSON.stringify(store.avatars));
-                    
-                    // Refresh UIs
                     renderTeamList();
                     renderQuickTasks();
                     renderKanbanBoard();
                 }
                 reader.readAsDataURL(input.files[0]);
             }
-            // Reset input so same file can be selected again
             input.value = '';
         }
 
@@ -723,14 +748,12 @@
             const grid = document.getElementById('calendar-body');
             grid.innerHTML = '';
 
-            // Padding days
             for(let i=0; i<firstDay; i++) {
                 const pad = document.createElement('div');
                 pad.className = "bg-slate-50/50 dark:bg-slate-800/50 border-r border-b border-slate-200 dark:border-slate-700";
                 grid.appendChild(pad);
             }
 
-            // Days
             for(let d=1; d<=daysInMonth; d++) {
                 const dateKey = `${store.calendarYear}-${String(store.calendarMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const isToday = (today.getDate() === d && today.getMonth() === store.calendarMonth && today.getFullYear() === store.calendarYear);
@@ -739,26 +762,20 @@
                 const el = document.createElement('div');
                 el.className = `calendar-day ${isToday ? 'today' : ''}`;
                 
-                // Day Number
                 const num = document.createElement('div');
                 num.className = "calendar-day-number";
                 num.textContent = d;
                 el.appendChild(num);
                 
-                // Render Events
                 events.forEach(evtStr => {
                     const evtDiv = document.createElement('div');
                     evtDiv.className = "cal-event-item";
-                    
-                    // Parse "TimeRange || Text" format
                     if (evtStr.includes("||")) {
                         const parts = evtStr.split("||");
                         evtDiv.innerHTML = `<span class="cal-time">${parts[0]}</span><span>${parts[1]}</span>`;
                     } else {
-                        // Backward compatibility or no time
                         evtDiv.textContent = evtStr;
                     }
-                    
                     el.appendChild(evtDiv);
                 });
 
@@ -809,19 +826,14 @@
             
             if(val) {
                 if(!store.events[dateStr]) store.events[dateStr] = [];
-                
                 let entry = val;
-                
-                // Format: "Start - End || Text"
                 if(startVal) {
                     let timeStr = startVal;
                     if(endVal) timeStr += ` - ${endVal}`;
                     entry = `${timeStr}||${val}`;
                 }
-
                 store.events[dateStr].push(entry);
-                store.events[dateStr].sort(); // Sorts by time string alphabetically
-
+                store.events[dateStr].sort();
                 localStorage.setItem('nexus_events', JSON.stringify(store.events));
                 document.getElementById('new-event-input').value = '';
                 document.getElementById('new-event-start').value = '';
@@ -851,7 +863,8 @@
                     id: Date.now().toString(),
                     title: val, description: "", assignee: assignee,
                     status: status, createdAt: now, 
-                    priority: 1, // Default priority
+                    priority: 1, 
+                    assignedDay: "", // New Field
                     completedAt: (status === 'done' ? now : null), 
                     lastMoved: now, log: { todo: 0, inprogress: 0, done: 0 } 
                 };
@@ -893,14 +906,11 @@
             document.getElementById('task-priority').value = val;
             const flags = document.querySelectorAll('.flag-btn');
             const texts = ["Low Urgency", "Low Urgency", "Medium Urgency", "High Urgency", "Critical Urgency"];
-            
             flags.forEach(f => {
                 if (parseInt(f.dataset.val) <= val) {
-                    f.classList.add('active');
-                    f.classList.remove('text-slate-300');
+                    f.classList.add('active'); f.classList.remove('text-slate-300');
                 } else {
-                    f.classList.remove('active');
-                    f.classList.add('text-slate-300');
+                    f.classList.remove('active'); f.classList.add('text-slate-300');
                 }
             });
             document.getElementById('priority-text').textContent = texts[val-1];
@@ -911,11 +921,13 @@
             const title = document.getElementById('task-title').value;
             const desc = document.getElementById('task-desc').value;
             const priority = parseInt(document.getElementById('task-priority').value) || 1;
+            const assignedDay = document.getElementById('task-day').value; // Get Day
+            
             let assignee = document.getElementById('task-assignee').value;
             if (store.currentUser && assignee === "") assignee = store.currentUser;
             if(!title) return alert('Title required');
 
-            const taskData = { title, description: desc, assignee, priority };
+            const taskData = { title, description: desc, assignee, priority, assignedDay };
 
             if(id) {
                 const t = store.kanbanTasks.find(x => x.id == id);
@@ -938,7 +950,6 @@
                 const elapsed = Math.floor((now - task.lastMoved) / 1000);
                 newLog[task.status] = (newLog[task.status] || 0) + elapsed;
             }
-            
             task.status = newStatus;
             task.lastMoved = now;
             task.log = newLog;
@@ -948,13 +959,21 @@
             renderKanbanBoard();
         }
 
-        // NEW FUNCTION: Handle priority change from list
+        // NEW: Update Task Day from Drag and Drop
+        function updateTaskDay(id, newDay) {
+            const task = store.kanbanTasks.find(t => t.id === id);
+            if (!task || task.assignedDay === newDay) return;
+            task.assignedDay = newDay;
+            localStorage.setItem('nexus_kanban', JSON.stringify(store.kanbanTasks));
+            renderKanbanBoard();
+        }
+
         function updateTaskPriority(id, newPriority) {
             const task = store.kanbanTasks.find(t => t.id === id);
             if (!task) return;
             task.priority = parseInt(newPriority);
             localStorage.setItem('nexus_kanban', JSON.stringify(store.kanbanTasks));
-            renderKanbanBoard(); // Re-render to update colors and sort order
+            renderKanbanBoard();
         }
 
         function deleteCurrentTask() {
@@ -965,6 +984,47 @@
                 renderKanbanBoard();
                 closeModal('task-modal');
             }
+        }
+
+        // --- WEEKLY VIEW LOGIC ---
+        function switchKanbanView(mode) {
+            store.kanbanMode = mode;
+            const statusView = document.getElementById('kanban-status-view');
+            const weekView = document.getElementById('kanban-week-view');
+            const btnStatus = document.getElementById('btn-view-status');
+            const btnWeek = document.getElementById('btn-view-week');
+
+            if (mode === 'status') {
+                statusView.classList.remove('hidden');
+                weekView.classList.add('hidden');
+                btnStatus.classList.add('active', 'text-white'); btnStatus.classList.remove('text-opacity-70');
+                btnWeek.classList.remove('active'); btnWeek.classList.add('text-opacity-70');
+            } else {
+                statusView.classList.add('hidden');
+                weekView.classList.remove('hidden');
+                btnWeek.classList.add('active', 'text-white'); btnWeek.classList.remove('text-opacity-70');
+                btnStatus.classList.remove('active'); btnStatus.classList.add('text-opacity-70');
+            }
+            renderKanbanBoard();
+        }
+
+        function generateWeekColumns() {
+            const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            const container = document.getElementById('week-columns-container');
+            container.innerHTML = '';
+            
+            days.forEach(day => {
+                const col = document.createElement('div');
+                col.className = "glass-panel rounded-xl flex flex-col h-full border-t-2 border-slate-300 dark:border-slate-600 min-w-[200px]";
+                col.innerHTML = `
+                    <div class="p-2 border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 text-center">
+                        <h3 class="font-bold text-slate-700 dark:text-slate-200 text-sm">${day}</h3>
+                    </div>
+                    <div class="column-body p-2 flex-1 overflow-y-auto space-y-2" ondrop="drop(event, '${day}', 'day')" ondragover="allowDrop(event)">
+                        </div>
+                `;
+                container.appendChild(col);
+            });
         }
         
         // --- DATA MANAGEMENT ---
@@ -977,19 +1037,16 @@
 
         function backupData() {
             const data = {};
-            // Loop through all keys in localStorage that start with 'nexus_'
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
                 if (key.startsWith('nexus_')) {
                     data[key] = localStorage.getItem(key);
                 }
             }
-            
             if (Object.keys(data).length === 0) {
                 alert("No data to backup.");
                 return;
             }
-
             const blob = new Blob([JSON.stringify(data, null, 2)], {type : 'application/json'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1011,28 +1068,21 @@
                     try {
                         const data = JSON.parse(e.target.result);
                         if (!confirm("This will overwrite your current data with the backup. Continue?")) return;
-
-                        // Clear current nexus keys
                         const keysToRemove = [];
                         for (let i = 0; i < localStorage.length; i++) {
                             const key = localStorage.key(i);
                             if (key.startsWith('nexus_')) keysToRemove.push(key);
                         }
                         keysToRemove.forEach(k => localStorage.removeItem(k));
-
-                        // Set new keys
                         Object.keys(data).forEach(key => {
                             if (key.startsWith('nexus_')) {
                                 localStorage.setItem(key, data[key]);
                             }
                         });
-
                         alert("Data restored successfully!");
                         location.reload();
-
                     } catch (err) {
                         alert("Error parsing backup file. Please ensure it is a valid JSON backup.");
-                        console.error(err);
                     }
                 }
                 reader.readAsText(input.files[0]);
@@ -1055,7 +1105,6 @@
             }
 
             const reportUserFilter = document.getElementById('report-user-filter');
-            // Preserve current selection if possible, else default to empty
             const currentReportFilter = reportUserFilter ? reportUserFilter.value : "";
             if(reportUserFilter) {
                 reportUserFilter.innerHTML = '<option value="">All Users</option>';
@@ -1068,7 +1117,6 @@
                 const li = document.createElement('li');
                 li.className = 'flex justify-between items-center text-sm text-white/80 bg-white/5 px-2 py-1 rounded hover:bg-white/10 transition group';
                 
-                // Avatar Rendering
                 let avatarHTML = `<div class="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] text-white font-bold">${user.charAt(0).toUpperCase()}</div>`;
                 if(store.avatars[user]) {
                     avatarHTML = `<div class="w-5 h-5 rounded-full bg-cover bg-center border border-white/20" style="background-image: url('${store.avatars[user]}')"></div>`;
@@ -1110,84 +1158,113 @@
             });
         }
 
+        function createCardHTML(t) {
+             let timerHtml = '';
+             let statusColor = 'border-l-4 border-slate-300';
+             if (t.status === 'inprogress') {
+                 const logVal = t.log ? t.log['inprogress'] || 0 : 0;
+                 const elapsed = logVal + Math.floor((Date.now() - t.lastMoved) / 1000);
+                 timerHtml = `<div class="text-xs text-indigo-500 font-bold flex items-center gap-1" id="timer-${t.id}" data-last="${t.lastMoved}" data-stored="${logVal}"><i class="fas fa-stopwatch"></i> <span>${formatTime(elapsed)}</span></div>`;
+                 statusColor = 'border-l-4 border-indigo-500 pl-2';
+             } else if (t.status === 'done') {
+                 const totalWorkTime = t.log ? t.log['inprogress'] || 0 : 0;
+                 timerHtml = `<div class="text-xs text-emerald-600 font-medium flex items-center gap-1"><i class="fas fa-check-circle"></i> <span>${formatTime(totalWorkTime)}</span></div>`;
+                 statusColor = 'border-l-4 border-emerald-500 pl-2 opacity-70';
+             } else {
+                 statusColor = 'border-l-4 border-slate-300 pl-2';
+                 timerHtml = `<div class="text-xs text-slate-400 italic">To Do</div>`;
+             }
+
+             // Assignee
+             let assigneeHtml = '';
+             if (t.assignee) {
+                 const hasImg = store.avatars[t.assignee];
+                 const icon = hasImg 
+                     ? `<div class="w-4 h-4 rounded-full bg-cover bg-center border border-indigo-200" style="background-image: url('${hasImg}')"></div>` 
+                     : `<i class="fas fa-user"></i>`;
+                 assigneeHtml = `<div class="bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">${icon} ${t.assignee}</div>`;
+             }
+
+             // Flags
+             const priority = t.priority || 1; 
+             let flagsHtml = '';
+             let flagColor = 'text-slate-300';
+             if (priority >= 3) flagColor = 'text-amber-400';
+             if (priority >= 4) flagColor = 'text-red-500';
+             if (priority <= 2 && priority > 0) flagColor = 'text-emerald-400';
+             for(let i=0; i<priority; i++) flagsHtml += `<i class="fas fa-flag text-[10px] ${flagColor} ml-0.5"></i>`;
+
+             return `
+                 <div class="${statusColor}">
+                    <div class="flex justify-between items-start mb-2">
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight">${t.title}</h4>
+                        <button onclick="openTaskModal('${t.id}')" class="text-slate-300 hover:text-indigo-500 opacity-0 group-hover:opacity-100"><i class="fas fa-pen text-xs"></i></button>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">${t.description || ''}</p>
+                    <div class="flex justify-between items-end border-t border-slate-100 dark:border-slate-700 pt-2">
+                        <div class="flex flex-col gap-1">${assigneeHtml}</div>
+                        <div class="flex flex-col items-end gap-1"><div>${flagsHtml}</div>${timerHtml}</div>
+                    </div>
+                 </div>
+             `;
+        }
+
         function renderKanbanBoard() {
-            ['todo', 'inprogress', 'done'].forEach(status => {
-                const container = document.querySelector(`[ondrop="drop(event, '${status}')"]`);
-                const tasks = store.kanbanTasks.filter(t => {
-                    if (t.status !== status) return false;
-                    if (store.currentUser) return t.assignee === store.currentUser;
-                    return true; 
+            // Status View Rendering
+            if (store.kanbanMode === 'status') {
+                ['todo', 'inprogress', 'done'].forEach(status => {
+                    const container = document.querySelector(`[ondrop="drop(event, '${status}', 'status')"]`);
+                    const tasks = store.kanbanTasks.filter(t => {
+                        if (t.status !== status) return false;
+                        if (store.currentUser) return t.assignee === store.currentUser;
+                        return true; 
+                    });
+
+                    container.innerHTML = '';
+                    document.getElementById(`count-${status}`).textContent = tasks.length;
+
+                    if (tasks.length === 0 && store.currentUser) {
+                        container.innerHTML = `<div class="text-center text-slate-400 text-xs italic p-4 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">No tasks assigned to you here.</div>`;
+                        return;
+                    }
+
+                    tasks.forEach(t => {
+                        const el = document.createElement('div');
+                        el.className = 'task-card bg-white dark:bg-slate-800 p-3 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition group relative';
+                        el.draggable = true;
+                        el.ondragstart = (e) => window.dragStart(e, t.id);
+                        el.ondragend = window.dragEnd;
+                        el.innerHTML = createCardHTML(t);
+                        container.appendChild(el);
+                    });
                 });
-
-                container.innerHTML = '';
-                document.getElementById(`count-${status}`).textContent = tasks.length;
-
-                if (tasks.length === 0 && store.currentUser) {
-                    container.innerHTML = `<div class="text-center text-slate-400 text-xs italic p-4 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">No tasks assigned to you here.</div>`;
-                    return;
-                }
-
-                tasks.forEach(t => {
-                    const el = document.createElement('div');
-                    el.className = 'task-card bg-white dark:bg-slate-800 p-3 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition group relative';
-                    el.draggable = true;
-                    el.ondragstart = (e) => window.dragStart(e, t.id);
-                    el.ondragend = window.dragEnd;
-
-                    let timerHtml = '';
-                    if (status === 'todo') {
-                        timerHtml = `<div class="text-xs text-slate-400 italic">Not started</div>`;
-                    } else if (status === 'inprogress') {
-                        const logVal = t.log ? t.log['inprogress'] || 0 : 0;
-                        const elapsed = logVal + Math.floor((Date.now() - t.lastMoved) / 1000);
-                        timerHtml = `<div class="text-xs text-indigo-500 font-bold flex items-center gap-1" id="timer-${t.id}" data-last="${t.lastMoved}" data-stored="${logVal}"><i class="fas fa-stopwatch"></i> <span>${formatTime(elapsed)}</span></div>`;
-                    } else if (status === 'done') {
-                        const totalWorkTime = t.log ? t.log['inprogress'] || 0 : 0;
-                        timerHtml = `<div class="text-xs text-emerald-600 font-medium flex items-center gap-1"><i class="fas fa-check-circle"></i> <span>${formatTime(totalWorkTime)}</span></div>`;
-                    }
-
-                    // Assignee with Avatar Check
-                    let assigneeHtml = '';
-                    if (t.assignee) {
-                        const hasImg = store.avatars[t.assignee];
-                        const icon = hasImg 
-                            ? `<div class="w-4 h-4 rounded-full bg-cover bg-center border border-indigo-200" style="background-image: url('${hasImg}')"></div>` 
-                            : `<i class="fas fa-user"></i>`;
-                        
-                        assigneeHtml = `<div class="bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">${icon} ${t.assignee}</div>`;
-                    }
-
-                    // Render Priority Flags
-                    const priority = t.priority || 1; 
-                    let flagsHtml = '';
-                    let flagColor = 'text-slate-300'; // Default low
-                    if (priority >= 3) flagColor = 'text-amber-400';
-                    if (priority >= 4) flagColor = 'text-red-500';
-                    if (priority <= 2 && priority > 0) flagColor = 'text-emerald-400';
-
-                    for(let i=0; i<priority; i++) {
-                        flagsHtml += `<i class="fas fa-flag text-[10px] ${flagColor} ml-0.5"></i>`;
-                    }
-
-                    el.innerHTML = `
-                        <div class="flex justify-between items-start mb-2">
-                            <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight">${t.title}</h4>
-                            <button onclick="openTaskModal('${t.id}')" class="text-slate-300 hover:text-indigo-500 opacity-0 group-hover:opacity-100"><i class="fas fa-pen text-xs"></i></button>
-                        </div>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">${t.description || ''}</p>
-                        <div class="flex justify-between items-end border-t border-slate-100 dark:border-slate-700 pt-2">
-                            <div class="flex flex-col gap-1">
-                                ${assigneeHtml}
-                            </div>
-                            <div class="flex flex-col items-end gap-1">
-                                <div>${flagsHtml}</div>
-                                ${timerHtml}
-                            </div>
-                        </div>
-                    `;
-                    container.appendChild(el);
+            } else {
+                // Week View Rendering
+                const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                days.forEach(day => {
+                    const container = document.querySelector(`[ondrop="drop(event, '${day}', 'day')"]`);
+                    if(!container) return; // Guard
+                    
+                    const tasks = store.kanbanTasks.filter(t => {
+                        if (t.assignedDay !== day) return false;
+                        if (t.status === 'done') return false; // Optional: hide done tasks in schedule view to keep it clean? Let's keep them out for now.
+                        if (store.currentUser) return t.assignee === store.currentUser;
+                        return true;
+                    });
+                    
+                    container.innerHTML = '';
+                    tasks.forEach(t => {
+                        const el = document.createElement('div');
+                        el.className = 'task-card bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition group relative';
+                        el.draggable = true;
+                        el.ondragstart = (e) => window.dragStart(e, t.id);
+                        el.ondragend = window.dragEnd;
+                        el.innerHTML = createCardHTML(t);
+                        container.appendChild(el);
+                    });
                 });
-            });
+            }
+
             renderQuickTasks();
         }
         
@@ -1199,7 +1276,6 @@
                 if (t.status === 'done') return false;
                 return !store.currentUser || t.assignee === store.currentUser;
             }).sort((a, b) => {
-                // Sort by priority first (descending), then status
                 if ((b.priority || 1) !== (a.priority || 1)) return (b.priority || 1) - (a.priority || 1);
                 const map = { 'inprogress': 1, 'todo': 2 };
                 return map[a.status] - map[b.status];
@@ -1214,31 +1290,23 @@
                 const li = document.createElement('li');
                 li.className = 'flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 group transition hover:shadow-md';
                 
-                // Avatar Rendering
                 const assignedUser = t.assignee || "?";
                 let avatarHTML = `<div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold text-xs">${assignedUser.charAt(0).toUpperCase()}</div>`;
-                
                 if(store.avatars[assignedUser]) {
                     avatarHTML = `<div class="w-8 h-8 rounded-full bg-cover bg-center border border-slate-200 dark:border-slate-600" style="background-image: url('${store.avatars[assignedUser]}')"></div>`;
                 }
 
-                // HIGHLY VISUAL URGENCY STYLING
                 const p = t.priority || 1;
                 let prioClass = '';
-                // Solid background colors for visual impact
-                if(p <= 2) prioClass = 'bg-emerald-500 text-white border-emerald-600'; // Low (Green)
-                if(p === 3) prioClass = 'bg-amber-500 text-white border-amber-600'; // Medium (Amber)
-                if(p >= 4) prioClass = 'bg-red-500 text-white border-red-600'; // High (Red)
+                if(p <= 2) prioClass = 'bg-emerald-500 text-white border-emerald-600'; 
+                if(p === 3) prioClass = 'bg-amber-500 text-white border-amber-600'; 
+                if(p >= 4) prioClass = 'bg-red-500 text-white border-red-600'; 
 
                 li.innerHTML = `
-                    <div class="flex-shrink-0" title="Assigned to ${assignedUser}">
-                        ${avatarHTML}
-                    </div>
-
+                    <div class="flex-shrink-0" title="Assigned to ${assignedUser}">${avatarHTML}</div>
                     <div class="flex-1 min-w-0">
                         <span class="dark:text-slate-200 font-medium truncate block" title="${t.title}">${t.title}</span>
                     </div>
-
                     <div class="flex-shrink-0">
                         <select onchange="updateTaskPriority('${t.id}', this.value)" class="${prioClass} border rounded px-1 py-1 text-[10px] font-bold outline-none cursor-pointer w-20 text-center shadow-sm">
                             <option value="1" ${p===1 ? 'selected' : ''}>Low</option>
@@ -1248,7 +1316,6 @@
                             <option value="5" ${p===5 ? 'selected' : ''}>Critical</option>
                         </select>
                     </div>
-
                     <div class="flex-shrink-0">
                         <select onchange="updateTaskStatus('${t.id}', this.value)" class="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-2 py-1 text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 outline-none cursor-pointer">
                             <option value="todo" ${t.status === 'todo' ? 'selected' : ''}>To Do</option>
@@ -1256,7 +1323,6 @@
                             <option value="done" ${t.status === 'done' ? 'selected' : ''}>Done</option>
                         </select>
                     </div>
-
                     <div class="flex-shrink-0">
                         <button onclick="deleteQuickTask('${t.id}')" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition px-2"><i class="fas fa-trash"></i></button>
                     </div>
@@ -1270,7 +1336,6 @@
             const now = new Date();
             document.getElementById('clock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
             document.getElementById('date').textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-            
             if (!store.currentUser) {
                 const h = now.getHours();
                 const timeBasedGreeting = (h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening");
@@ -1318,39 +1383,33 @@
             document.getElementById(`nav-${viewName}`).classList.add('active');
         }
         
-        // Modals
         function openTaskModal(id = null) {
             const modal = document.getElementById('task-modal');
             modal.classList.remove('hidden');
             const title = document.getElementById('task-title');
             const desc = document.getElementById('task-desc');
             const assignee = document.getElementById('task-assignee');
+            const dayInput = document.getElementById('task-day'); // New Input
             const hiddenId = document.getElementById('task-id');
             const delBtn = document.getElementById('btn-delete');
-            const assignHint = document.getElementById('assign-hint');
-
-            // Hint Logic
-            if (store.currentUser && !id) {
-                assignee.value = store.currentUser; assignHint.classList.remove('hidden');
-            } else {
-                assignHint.classList.add('hidden');
-            }
+            
+            if (store.currentUser && !id) assignee.value = store.currentUser; 
 
             if(id) {
                 const t = store.kanbanTasks.find(x => x.id === id);
                 title.value = t.title; desc.value = t.description; assignee.value = t.assignee || "";
+                dayInput.value = t.assignedDay || ""; // Set Day
                 hiddenId.value = t.id; document.getElementById('modal-title').textContent = "Edit Task"; delBtn.classList.remove('hidden');
-                setPriority(t.priority || 1); // Set flags for existing task
+                setPriority(t.priority || 1); 
             } else {
-                title.value = ''; desc.value = ''; hiddenId.value = ''; 
+                title.value = ''; desc.value = ''; hiddenId.value = ''; dayInput.value = '';
                 if(!store.currentUser) assignee.value = '';
                 document.getElementById('modal-title').textContent = "New Task"; delBtn.classList.add('hidden');
-                setPriority(1); // Default priority
+                setPriority(1); 
             }
         }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
         
-        // --- REPORTING ---
         function toggleReportModal() {
             const m = document.getElementById('report-modal');
             m.classList.toggle('hidden');
@@ -1393,7 +1452,6 @@
                 tbody.appendChild(tr);
             });
 
-            // Total Row
             const totalRow = document.createElement('tr');
             totalRow.className = "bg-slate-100 dark:bg-slate-700/50 font-bold border-t-2 border-slate-300 dark:border-slate-500";
             totalRow.innerHTML = `
@@ -1420,16 +1478,12 @@
                 return;
             }
 
-            // CSV Headers
             let csvContent = "Task Title,Assignee,Completed Date,Work Duration\n";
-
             completed.forEach(t => {
                 const workTime = t.log['inprogress'] || 0;
                 const formattedTime = formatTime(workTime);
                 const dateStr = new Date(t.completedAt).toLocaleDateString();
-                // Escape quotes in title
                 const cleanTitle = t.title.replace(/"/g, '""');
-                
                 csvContent += `"${cleanTitle}","${t.assignee || 'Unassigned'}","${dateStr}","${formattedTime}"\n`;
             });
 
