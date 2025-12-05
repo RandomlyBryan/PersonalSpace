@@ -160,7 +160,7 @@
             100% { text-shadow: 0 0 0 rgba(16, 185, 129, 0); }
         }
         
-        /* Flatpickr Customization to fit theme */
+        /* Flatpickr Customization */
         .flatpickr-calendar {
             background: rgba(30, 41, 59, 0.95) !important;
             border: 1px solid rgba(255,255,255,0.1) !important;
@@ -1125,7 +1125,12 @@
             document.getElementById('week-view-label').textContent = `${curr.getMonth()+1}/${curr.getDate()} - ${endOfWeek.getMonth()+1}/${endOfWeek.getDate()}`;
 
             for (let i = 0; i < 7; i++) {
-                const dateStr = curr.toISOString().split('T')[0]; // YYYY-MM-DD
+                // Fix: Use local date generation instead of ISO (UTC) to prevent column shifting
+                const year = curr.getFullYear();
+                const month = String(curr.getMonth() + 1).padStart(2, '0');
+                const day = String(curr.getDate()).padStart(2, '0');
+                const dateStr = `${year}-${month}-${day}`; 
+
                 const displayDate = `${days[curr.getDay()]} ${curr.getMonth()+1}/${curr.getDate()}`;
                 
                 const col = document.createElement('div');
@@ -1333,11 +1338,13 @@
              if (priority <= 2 && priority > 0) flagColor = 'text-emerald-400';
              for(let i=0; i<priority; i++) flagsHtml += `<i class="fas fa-flag text-[10px] ${flagColor} ml-0.5"></i>`;
 
-             // Date Label in Card
+             // Date Label in Card (Fix: Parse string manually)
              let dateLabel = "";
              if (t.assignedDate) {
-                 const d = new Date(t.assignedDate);
-                 dateLabel = `<span class="text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 px-1 rounded border border-slate-200 dark:border-slate-600">${d.getMonth()+1}/${d.getDate()}</span>`;
+                 const parts = t.assignedDate.split('-');
+                 const m = parseInt(parts[1]); // Remove leading zero
+                 const d = parseInt(parts[2]); // Remove leading zero
+                 dateLabel = `<span class="text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 px-1 rounded border border-slate-200 dark:border-slate-600">${m}/${d}</span>`;
              }
 
              return `
@@ -1421,7 +1428,12 @@
                 // We need to re-render tasks into specific date columns
                 const curr = new Date(store.weekViewStart);
                 for(let i=0; i<7; i++) {
-                    const dateStr = curr.toISOString().split('T')[0];
+                    // Fix: Use local date generation here as well
+                    const year = curr.getFullYear();
+                    const month = String(curr.getMonth() + 1).padStart(2, '0');
+                    const day = String(curr.getDate()).padStart(2, '0');
+                    const dateStr = `${year}-${month}-${day}`; 
+
                     const container = document.getElementById(`col-${dateStr}`);
                     
                     if(container) {
