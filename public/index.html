@@ -97,23 +97,27 @@
         /* Text Events in Calendar */
         .cal-event-item {
             font-size: 0.65rem;
-            line-height: 1.3;
-            padding: 3px 4px;
-            border-radius: 2px;
-            background: rgba(16, 185, 129, 0.2);
+            line-height: 1.2;
+            padding: 4px 5px;
+            border-radius: 3px;
+            background: rgba(16, 185, 129, 0.15);
             color: #065f46;
             margin-top: 2px;
             width: 100%;
             white-space: normal; 
             word-break: break-word;
-            text-align: justify; 
+            text-align: left; 
             border-left: 2px solid #10b981;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
         }
         .dark .cal-event-item {
-            background: rgba(16, 185, 129, 0.4);
+            background: rgba(16, 185, 129, 0.3);
             color: #d1fae5;
             border-left: 2px solid #34d399;
         }
+        .cal-time { font-weight: 800; opacity: 0.9; font-size: 0.6rem; display: block; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom:1px; margin-bottom:1px;}
         .calendar-day-number { margin-bottom: 2px; }
 
         /* Flag Urgency System */
@@ -430,12 +434,23 @@
             
             <div id="day-events-list" class="mb-4 space-y-2 max-h-40 overflow-y-auto min-h-[50px] bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2"></div>
 
-            <div class="flex gap-2 items-center">
-                <input type="time" id="new-event-time" class="bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white">
+            <div class="flex flex-col gap-2">
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Start</label>
+                        <input type="time" id="new-event-start" class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white">
+                    </div>
+                    <div class="flex-1">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">End</label>
+                        <input type="time" id="new-event-end" class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white">
+                    </div>
+                </div>
                 
-                <input type="text" id="new-event-input" placeholder="Event details..." class="flex-1 bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white">
-                
-                <button onclick="addEvent()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg"><i class="fas fa-plus"></i></button>
+                <div class="flex gap-2">
+                    <input type="text" id="new-event-input" placeholder="Event details..." class="flex-1 bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white">
+                    
+                    <button onclick="addEvent()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg"><i class="fas fa-plus"></i></button>
+                </div>
             </div>
             
             <div class="mt-4 text-right">
@@ -711,12 +726,20 @@
                 num.textContent = d;
                 el.appendChild(num);
                 
-                // Render Events as Text
-                events.forEach(evt => {
+                // Render Events
+                events.forEach(evtStr => {
                     const evtDiv = document.createElement('div');
                     evtDiv.className = "cal-event-item";
-                    evtDiv.textContent = evt;
-                    evtDiv.title = evt; // Tooltip for full text
+                    
+                    // Parse "TimeRange || Text" format
+                    if (evtStr.includes("||")) {
+                        const parts = evtStr.split("||");
+                        evtDiv.innerHTML = `<span class="cal-time">${parts[0]}</span><span>${parts[1]}</span>`;
+                    } else {
+                        // Backward compatibility or no time
+                        evtDiv.textContent = evtStr;
+                    }
+                    
                     el.appendChild(evtDiv);
                 });
 
@@ -729,7 +752,8 @@
             document.getElementById('calendar-modal').classList.remove('hidden');
             document.getElementById('cal-date-title').textContent = new Date(dateStr).toDateString();
             document.getElementById('cal-date-val').value = dateStr;
-            document.getElementById('new-event-time').value = ''; // Reset time input
+            document.getElementById('new-event-start').value = ''; 
+            document.getElementById('new-event-end').value = ''; 
             renderDayEvents(dateStr);
         }
 
@@ -743,33 +767,46 @@
                 return;
             }
 
-            events.forEach((evt, idx) => {
+            events.forEach((evtStr, idx) => {
                 const div = document.createElement('div');
                 div.className = "flex justify-between items-center bg-white dark:bg-slate-600 p-2 rounded text-xs dark:text-white border border-slate-200 dark:border-slate-500";
-                div.innerHTML = `<span>${evt}</span> <button onclick="deleteEvent('${dateStr}', ${idx})" class="text-red-400 hover:text-red-500"><i class="fas fa-times"></i></button>`;
+                
+                let displayHtml = evtStr;
+                if(evtStr.includes("||")) {
+                    const parts = evtStr.split("||");
+                    displayHtml = `<span class="font-bold mr-2">${parts[0]}</span> ${parts[1]}`;
+                }
+
+                div.innerHTML = `<div>${displayHtml}</div> <button onclick="deleteEvent('${dateStr}', ${idx})" class="text-red-400 hover:text-red-500"><i class="fas fa-times"></i></button>`;
                 list.appendChild(div);
             });
         }
 
         function addEvent() {
             const val = document.getElementById('new-event-input').value.trim();
-            const timeVal = document.getElementById('new-event-time').value;
+            const startVal = document.getElementById('new-event-start').value;
+            const endVal = document.getElementById('new-event-end').value;
             const dateStr = document.getElementById('cal-date-val').value;
             
             if(val) {
                 if(!store.events[dateStr]) store.events[dateStr] = [];
                 
                 let entry = val;
-                if(timeVal) {
-                    entry = `${timeVal} - ${val}`;
+                
+                // Format: "Start - End || Text"
+                if(startVal) {
+                    let timeStr = startVal;
+                    if(endVal) timeStr += ` - ${endVal}`;
+                    entry = `${timeStr}||${val}`;
                 }
 
                 store.events[dateStr].push(entry);
-                store.events[dateStr].sort(); // Simple alphabetical sort puts times in order
+                store.events[dateStr].sort(); // Sorts by time string alphabetically
 
                 localStorage.setItem('nexus_events', JSON.stringify(store.events));
                 document.getElementById('new-event-input').value = '';
-                document.getElementById('new-event-time').value = '';
+                document.getElementById('new-event-start').value = '';
+                document.getElementById('new-event-end').value = '';
                 renderDayEvents(dateStr);
                 renderCalendar(); 
             }
@@ -1166,11 +1203,13 @@
                     avatarHTML = `<div class="w-8 h-8 rounded-full bg-cover bg-center border border-slate-200 dark:border-slate-600" style="background-image: url('${store.avatars[assignedUser]}')"></div>`;
                 }
 
-                // Priority Logic for Dropdown Color
+                // HIGHLY VISUAL URGENCY STYLING
                 const p = t.priority || 1;
-                let prioClass = 'text-emerald-600 bg-emerald-50 border-emerald-200';
-                if(p >= 3) prioClass = 'text-amber-600 bg-amber-50 border-amber-200';
-                if(p >= 4) prioClass = 'text-red-600 bg-red-50 border-red-200';
+                let prioClass = '';
+                // Solid background colors for visual impact
+                if(p <= 2) prioClass = 'bg-emerald-500 text-white border-emerald-600'; // Low (Green)
+                if(p === 3) prioClass = 'bg-amber-500 text-white border-amber-600'; // Medium (Amber)
+                if(p >= 4) prioClass = 'bg-red-500 text-white border-red-600'; // High (Red)
 
                 li.innerHTML = `
                     <div class="flex-shrink-0" title="Assigned to ${assignedUser}">
@@ -1182,19 +1221,19 @@
                     </div>
 
                     <div class="flex-shrink-0">
-                        <select onchange="updateTaskPriority('${t.id}', this.value)" class="${prioClass} border rounded px-1 py-1 text-[10px] font-bold outline-none cursor-pointer w-16 text-center">
-                            <option value="1" ${p===1 ? 'selected' : ''}>Flag 1</option>
-                            <option value="2" ${p===2 ? 'selected' : ''}>Flag 2</option>
-                            <option value="3" ${p===3 ? 'selected' : ''}>Flag 3</option>
-                            <option value="4" ${p===4 ? 'selected' : ''}>Flag 4</option>
-                            <option value="5" ${p===5 ? 'selected' : ''}>Flag 5</option>
+                        <select onchange="updateTaskPriority('${t.id}', this.value)" class="${prioClass} border rounded px-1 py-1 text-[10px] font-bold outline-none cursor-pointer w-20 text-center shadow-sm">
+                            <option value="1" ${p===1 ? 'selected' : ''}>Low</option>
+                            <option value="2" ${p===2 ? 'selected' : ''}>Normal</option>
+                            <option value="3" ${p===3 ? 'selected' : ''}>Medium</option>
+                            <option value="4" ${p===4 ? 'selected' : ''}>High</option>
+                            <option value="5" ${p===5 ? 'selected' : ''}>Critical</option>
                         </select>
                     </div>
 
                     <div class="flex-shrink-0">
                         <select onchange="updateTaskStatus('${t.id}', this.value)" class="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-2 py-1 text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 outline-none cursor-pointer">
                             <option value="todo" ${t.status === 'todo' ? 'selected' : ''}>To Do</option>
-                            <option value="inprogress" ${t.status === 'inprogress' ? 'selected' : ''}>In Progress</option>
+                            <option value="inprogress" ${t.status === 'inprogress' ? 'selected' : ''}>Doing</option>
                             <option value="done" ${t.status === 'done' ? 'selected' : ''}>Done</option>
                         </select>
                     </div>
