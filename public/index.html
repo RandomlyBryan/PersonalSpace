@@ -75,7 +75,7 @@
             border-color: #334155;
         }
         
-        /* --- FIXED CALENDAR DAY CSS --- */
+        /* Fixed Calendar Day CSS */
         .calendar-day { 
             min-height: 80px; 
             max-height: 110px; 
@@ -96,7 +96,6 @@
         }
         .calendar-day::-webkit-scrollbar { width: 2px; }
         .calendar-day::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); }
-        /* ------------------------------ */
 
         .dark .calendar-day {
             border-color: #334155;
@@ -106,7 +105,6 @@
         .calendar-day.today { background: #e0e7ff; color: #4338ca; font-weight: bold; }
         .dark .calendar-day.today { background: #312e81; color: #a5b4fc; }
 
-        /* Text Events in Calendar */
         .cal-event-item {
             font-size: 0.65rem;
             line-height: 1.2;
@@ -136,7 +134,7 @@
         .flag-btn {
             cursor: pointer;
             transition: all 0.2s;
-            color: #cbd5e1; /* Default Slate-300 */
+            color: #cbd5e1; 
         }
         .dark .flag-btn { color: #475569; }
         
@@ -146,14 +144,11 @@
         .dark .flag-btn:hover ~ .flag-btn { color: #475569; }
         .flag-btn.active { color: #ef4444; }
         
-        /* Avatar Upload Overlay */
         .avatar-container:hover .avatar-overlay { opacity: 1; }
         
-        /* View Toggle Animation */
         .view-btn { transition: all 0.2s; }
         .view-btn.active { background-color: rgba(255,255,255,0.2); font-weight: bold; border: 1px solid rgba(255,255,255,0.4); }
 
-        /* Timer Pulse */
         .timer-active { animation: pulse-green 2s infinite; }
         @keyframes pulse-green {
             0% { text-shadow: 0 0 0 rgba(16, 185, 129, 0); }
@@ -364,9 +359,22 @@
                         <p class="text-sm opacity-80" id="tracker-subtitle">Showing all project tasks</p>
                     </div>
 
-                    <div class="bg-black/20 p-1 rounded-lg flex text-xs font-bold">
+                    <div class="bg-black/20 p-1 rounded-lg flex text-xs font-bold items-center gap-2">
                         <button onclick="switchKanbanView('status')" id="btn-view-status" class="view-btn active px-3 py-1.5 rounded text-white">Status</button>
                         <button onclick="switchKanbanView('week')" id="btn-view-week" class="view-btn px-3 py-1.5 rounded text-white text-opacity-70 hover:text-opacity-100">Week View</button>
+                    </div>
+
+                    <div id="kanban-filter-container" class="flex items-center gap-2 bg-black/20 p-1 rounded-lg">
+                         <input type="date" id="filter-start-date" class="bg-white/10 border-none text-white text-xs rounded px-2 py-1 outline-none w-28" onchange="renderKanbanBoard()">
+                         <span class="text-white/50 text-xs">-</span>
+                         <input type="date" id="filter-end-date" class="bg-white/10 border-none text-white text-xs rounded px-2 py-1 outline-none w-28" onchange="renderKanbanBoard()">
+                         <button onclick="clearFilters()" class="text-xs text-white/50 hover:text-white px-2"><i class="fas fa-times"></i></button>
+                    </div>
+
+                    <div id="week-nav-container" class="hidden flex items-center gap-2 bg-black/20 p-1 rounded-lg">
+                        <button onclick="changeWeek(-1)" class="text-white hover:text-indigo-300 px-2"><i class="fas fa-chevron-left"></i></button>
+                        <span id="week-view-label" class="text-xs text-white font-bold w-24 text-center">...</span>
+                        <button onclick="changeWeek(1)" class="text-white hover:text-indigo-300 px-2"><i class="fas fa-chevron-right"></i></button>
                     </div>
 
                     <div class="flex gap-2">
@@ -437,17 +445,8 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Day</label>
-                    <select id="task-day" class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white">
-                        <option value="">Unscheduled</option>
-                        <option value="Sunday">Sunday</option>
-                        <option value="Monday">Monday</option>
-                        <option value="Tuesday">Tuesday</option>
-                        <option value="Wednesday">Wednesday</option>
-                        <option value="Thursday">Thursday</option>
-                        <option value="Friday">Friday</option>
-                        <option value="Saturday">Saturday</option>
-                    </select>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Scheduled Date</label>
+                    <input type="date" id="task-date" class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white text-sm">
                 </div>
             </div>
             
@@ -536,9 +535,9 @@
                 </div>
                 
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Day</label>
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Generic Day</label>
                     <select id="report-day-filter" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm dark:text-white outline-none w-32">
-                        <option value="">Any Day</option>
+                        <option value="">Any</option>
                         <option value="Sunday">Sunday</option>
                         <option value="Monday">Monday</option>
                         <option value="Tuesday">Tuesday</option>
@@ -584,7 +583,9 @@
             events: {}, 
             calendarMonth: new Date().getMonth(),
             calendarYear: new Date().getFullYear(),
-            kanbanMode: 'status' 
+            kanbanMode: 'status',
+            // New: Week View State
+            weekViewStart: new Date() // Will settle to current week's Sunday
         };
         
         let draggedItem = null;
@@ -603,8 +604,8 @@
         window.deleteQuickTask = deleteQuickTask;
         window.updateTaskStatus = updateTaskStatus;
         window.updateTaskPriority = updateTaskPriority;
-        window.updateTaskDay = updateTaskDay;
-        window.toggleTaskPause = toggleTaskPause; // NEW
+        window.updateTaskDate = updateTaskDate; // Updated from updateTaskDay
+        window.toggleTaskPause = toggleTaskPause;
         window.openTaskModal = openTaskModal;
         window.closeModal = closeModal;
         window.saveTask = saveTask;
@@ -617,6 +618,8 @@
         window.handleRestore = handleRestore;
         window.exportReportCSV = exportReportCSV;
         window.setPriority = setPriority;
+        window.clearFilters = clearFilters;
+        window.changeWeek = changeWeek;
         
         window.triggerAvatarUpload = triggerAvatarUpload;
         window.handleAvatarFile = handleAvatarFile;
@@ -637,7 +640,8 @@
             col?.classList.remove('drag-over');
             if(draggedItem) { 
                 if(type === 'status') updateTaskStatus(draggedItem, val); 
-                if(type === 'day') updateTaskDay(draggedItem, val);
+                // Val here will be the specific YYYY-MM-DD date string for the column
+                if(type === 'date') updateTaskDate(draggedItem, val);
                 draggedItem = null; 
             }
         };
@@ -648,9 +652,17 @@
             updateClock();
             setInterval(updateClock, 1000);
             
+            // Set current week start (Sunday)
             const today = new Date();
-            document.getElementById('report-end').valueAsDate = today;
-            document.getElementById('report-start').valueAsDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            const day = today.getDay(); 
+            const diff = today.getDate() - day; 
+            store.weekViewStart = new Date(today.setDate(diff));
+            store.weekViewStart.setHours(0,0,0,0);
+
+            // Report defaults
+            const now = new Date();
+            document.getElementById('report-end').valueAsDate = now;
+            document.getElementById('report-start').valueAsDate = new Date(now.getFullYear(), now.getMonth(), 1);
             
             document.getElementById('quick-task-input').addEventListener('keypress', (e) => {
                 if(e.key === 'Enter') addQuickTask();
@@ -663,8 +675,7 @@
             store.avatars = JSON.parse(localStorage.getItem('nexus_avatars')) || {};
 
             renderTeamList();
-            generateWeekColumns(); 
-            renderKanbanBoard();
+            renderKanbanBoard(); // This will trigger generateWeekColumns inside
             renderCalendar();
             
             setInterval(updateKanbanTimers, 1000);
@@ -888,8 +899,8 @@
                     title: val, description: "", assignee: assignee,
                     status: status, createdAt: now, 
                     priority: 1, 
-                    assignedDay: "", 
-                    isPaused: false, // New Field
+                    assignedDate: "", // Changed from assignedDay to assignedDate (YYYY-MM-DD)
+                    isPaused: false, 
                     completedAt: (status === 'done' ? now : null), 
                     lastMoved: now, log: { todo: 0, inprogress: 0, done: 0 } 
                 };
@@ -946,13 +957,13 @@
             const title = document.getElementById('task-title').value;
             const desc = document.getElementById('task-desc').value;
             const priority = parseInt(document.getElementById('task-priority').value) || 1;
-            const assignedDay = document.getElementById('task-day').value; 
+            const assignedDate = document.getElementById('task-date').value; 
             
             let assignee = document.getElementById('task-assignee').value;
             if (store.currentUser && assignee === "") assignee = store.currentUser;
             if(!title) return alert('Title required');
 
-            const taskData = { title, description: desc, assignee, priority, assignedDay };
+            const taskData = { title, description: desc, assignee, priority, assignedDate };
 
             if(id) {
                 const t = store.kanbanTasks.find(x => x.id == id);
@@ -972,7 +983,6 @@
             const now = Date.now();
             let newLog = task.log ? { ...task.log } : { todo: 0, inprogress: 0, done: 0 };
             
-            // Only add time if it was Running (not paused) and previously in progress
             if (task.status === 'inprogress' && !task.isPaused) {
                 const elapsed = Math.floor((now - task.lastMoved) / 1000);
                 newLog['inprogress'] = (newLog['inprogress'] || 0) + elapsed;
@@ -982,25 +992,21 @@
             task.lastMoved = now;
             task.log = newLog;
             task.completedAt = (newStatus === 'done') ? now : null;
-            task.isPaused = false; // Reset pause on move
+            task.isPaused = false; 
             
             localStorage.setItem('nexus_kanban', JSON.stringify(store.kanbanTasks));
             renderKanbanBoard();
         }
 
-        // NEW: Toggle Pause Function
         function toggleTaskPause(id) {
             const task = store.kanbanTasks.find(t => t.id === id);
             if (!task || task.status !== 'inprogress') return;
 
             const now = Date.now();
-
             if (task.isPaused) {
-                // RESUME
                 task.isPaused = false;
                 task.lastMoved = now; 
             } else {
-                // PAUSE
                 const elapsed = Math.floor((now - task.lastMoved) / 1000);
                 task.log['inprogress'] = (task.log['inprogress'] || 0) + elapsed;
                 task.isPaused = true;
@@ -1009,10 +1015,11 @@
             renderKanbanBoard();
         }
 
-        function updateTaskDay(id, newDay) {
+        // Updated to use Date
+        function updateTaskDate(id, newDate) {
             const task = store.kanbanTasks.find(t => t.id === id);
-            if (!task || task.assignedDay === newDay) return;
-            task.assignedDay = newDay;
+            if (!task || task.assignedDate === newDate) return;
+            task.assignedDate = newDate;
             localStorage.setItem('nexus_kanban', JSON.stringify(store.kanbanTasks));
             renderKanbanBoard();
         }
@@ -1035,6 +1042,13 @@
             }
         }
 
+        // --- FILTERING ---
+        function clearFilters() {
+            document.getElementById('filter-start-date').value = '';
+            document.getElementById('filter-end-date').value = '';
+            renderKanbanBoard();
+        }
+
         // --- WEEKLY VIEW LOGIC ---
         function switchKanbanView(mode) {
             store.kanbanMode = mode;
@@ -1042,38 +1056,63 @@
             const weekView = document.getElementById('kanban-week-view');
             const btnStatus = document.getElementById('btn-view-status');
             const btnWeek = document.getElementById('btn-view-week');
+            const filterContainer = document.getElementById('kanban-filter-container');
+            const weekNavContainer = document.getElementById('week-nav-container');
 
             if (mode === 'status') {
                 statusView.classList.remove('hidden');
                 weekView.classList.add('hidden');
                 btnStatus.classList.add('active', 'text-white'); btnStatus.classList.remove('text-opacity-70');
                 btnWeek.classList.remove('active'); btnWeek.classList.add('text-opacity-70');
+                filterContainer.classList.remove('hidden');
+                weekNavContainer.classList.add('hidden');
             } else {
                 statusView.classList.add('hidden');
                 weekView.classList.remove('hidden');
                 btnWeek.classList.add('active', 'text-white'); btnWeek.classList.remove('text-opacity-70');
                 btnStatus.classList.remove('active'); btnStatus.classList.add('text-opacity-70');
+                filterContainer.classList.add('hidden');
+                weekNavContainer.classList.remove('hidden');
             }
             renderKanbanBoard();
         }
 
+        function changeWeek(delta) {
+            // Move store.weekViewStart by 7 days
+            store.weekViewStart.setDate(store.weekViewStart.getDate() + (delta * 7));
+            generateWeekColumns();
+            renderKanbanBoard();
+        }
+
         function generateWeekColumns() {
-            const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
             const container = document.getElementById('week-columns-container');
             container.innerHTML = '';
             
-            days.forEach(day => {
+            const curr = new Date(store.weekViewStart); // Start at sunday
+            const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+            // Update label
+            const endOfWeek = new Date(curr);
+            endOfWeek.setDate(endOfWeek.getDate() + 6);
+            document.getElementById('week-view-label').textContent = `${curr.getMonth()+1}/${curr.getDate()} - ${endOfWeek.getMonth()+1}/${endOfWeek.getDate()}`;
+
+            for (let i = 0; i < 7; i++) {
+                const dateStr = curr.toISOString().split('T')[0]; // YYYY-MM-DD
+                const displayDate = `${days[curr.getDay()]} ${curr.getMonth()+1}/${curr.getDate()}`;
+                
                 const col = document.createElement('div');
                 col.className = "glass-panel rounded-xl flex flex-col h-full border-t-2 border-slate-300 dark:border-slate-600 min-w-[200px]";
                 col.innerHTML = `
                     <div class="p-2 border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 text-center">
-                        <h3 class="font-bold text-slate-700 dark:text-slate-200 text-sm">${day}</h3>
+                        <h3 class="font-bold text-slate-700 dark:text-slate-200 text-sm">${displayDate}</h3>
                     </div>
-                    <div class="column-body p-2 flex-1 overflow-y-auto space-y-2" ondrop="drop(event, '${day}', 'day')" ondragover="allowDrop(event)">
+                    <div class="column-body p-2 flex-1 overflow-y-auto space-y-2" ondrop="drop(event, '${dateStr}', 'date')" ondragover="allowDrop(event)" id="col-${dateStr}">
                         </div>
                 `;
                 container.appendChild(col);
-            });
+                
+                curr.setDate(curr.getDate() + 1); // Next day
+            }
         }
         
         // --- DATA MANAGEMENT ---
@@ -1212,7 +1251,6 @@
              let statusColor = 'border-l-4 border-slate-300';
              
              if (t.status === 'inprogress') {
-                 // Paused vs Running logic
                  const logVal = t.log ? t.log['inprogress'] || 0 : 0;
                  let displayTime = logVal;
                  let playPauseIcon = '<i class="fas fa-pause"></i>';
@@ -1220,12 +1258,10 @@
                  let colorClass = 'text-indigo-600';
 
                  if (t.isPaused) {
-                     // If paused, just show logged time, play icon, no pulse
                      playPauseIcon = '<i class="fas fa-play"></i>';
                      activeClass = '';
                      colorClass = 'text-amber-500';
                  } else {
-                     // If running, calculate elapsed
                      displayTime += Math.floor((Date.now() - t.lastMoved) / 1000);
                  }
 
@@ -1269,10 +1305,20 @@
              if (priority <= 2 && priority > 0) flagColor = 'text-emerald-400';
              for(let i=0; i<priority; i++) flagsHtml += `<i class="fas fa-flag text-[10px] ${flagColor} ml-0.5"></i>`;
 
+             // Date Label in Card
+             let dateLabel = "";
+             if (t.assignedDate) {
+                 const d = new Date(t.assignedDate);
+                 dateLabel = `<span class="text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 px-1 rounded border border-slate-200 dark:border-slate-600">${d.getMonth()+1}/${d.getDate()}</span>`;
+             }
+
              return `
                  <div class="${statusColor}">
                     <div class="flex justify-between items-start mb-2">
-                        <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight">${t.title}</h4>
+                        <div class="flex-1 min-w-0 mr-2">
+                            <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight truncate">${t.title}</h4>
+                            <div class="flex gap-1 mt-1">${dateLabel}</div>
+                        </div>
                         <button onclick="openTaskModal('${t.id}')" class="text-slate-300 hover:text-indigo-500 opacity-0 group-hover:opacity-100"><i class="fas fa-pen text-xs"></i></button>
                     </div>
                     <p class="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">${t.description || ''}</p>
@@ -1285,21 +1331,35 @@
         }
 
         function renderKanbanBoard() {
+            // Get Filters
+            const filterStart = document.getElementById('filter-start-date').value;
+            const filterEnd = document.getElementById('filter-end-date').value;
+
             // Status View Rendering
             if (store.kanbanMode === 'status') {
                 ['todo', 'inprogress', 'done'].forEach(status => {
                     const container = document.querySelector(`[ondrop="drop(event, '${status}', 'status')"]`);
                     const tasks = store.kanbanTasks.filter(t => {
                         if (t.status !== status) return false;
-                        if (store.currentUser) return t.assignee === store.currentUser;
+                        if (store.currentUser && t.assignee !== store.currentUser) return false;
+                        
+                        // Date Range Filter Logic
+                        if (filterStart || filterEnd) {
+                            if (!t.assignedDate) return false; // Strict filtering: no date = hidden if filter is active
+                            const taskDate = t.assignedDate;
+                            if (filterStart && taskDate < filterStart) return false;
+                            if (filterEnd && taskDate > filterEnd) return false;
+                        }
+
                         return true; 
                     });
 
                     container.innerHTML = '';
                     document.getElementById(`count-${status}`).textContent = tasks.length;
 
-                    if (tasks.length === 0 && store.currentUser) {
-                        container.innerHTML = `<div class="text-center text-slate-400 text-xs italic p-4 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">No tasks assigned to you here.</div>`;
+                    if (tasks.length === 0) {
+                        const msg = (filterStart || filterEnd) ? "No tasks in range." : (store.currentUser ? "No tasks assigned to you." : "No tasks.");
+                        container.innerHTML = `<div class="text-center text-slate-400 text-xs italic p-4 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">${msg}</div>`;
                         return;
                     }
 
@@ -1315,29 +1375,37 @@
                 });
             } else {
                 // Week View Rendering
-                const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-                days.forEach(day => {
-                    const container = document.querySelector(`[ondrop="drop(event, '${day}', 'day')"]`);
-                    if(!container) return; // Guard
+                if (document.getElementById('week-columns-container').children.length === 0) {
+                    generateWeekColumns();
+                }
+
+                // We need to re-render tasks into specific date columns
+                const curr = new Date(store.weekViewStart);
+                for(let i=0; i<7; i++) {
+                    const dateStr = curr.toISOString().split('T')[0];
+                    const container = document.getElementById(`col-${dateStr}`);
                     
-                    const tasks = store.kanbanTasks.filter(t => {
-                        if (t.assignedDay !== day) return false;
-                        if (t.status === 'done') return false; 
-                        if (store.currentUser) return t.assignee === store.currentUser;
-                        return true;
-                    });
-                    
-                    container.innerHTML = '';
-                    tasks.forEach(t => {
-                        const el = document.createElement('div');
-                        el.className = 'task-card bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition group relative';
-                        el.draggable = true;
-                        el.ondragstart = (e) => window.dragStart(e, t.id);
-                        el.ondragend = window.dragEnd;
-                        el.innerHTML = createCardHTML(t);
-                        container.appendChild(el);
-                    });
-                });
+                    if(container) {
+                        container.innerHTML = '';
+                        const tasks = store.kanbanTasks.filter(t => {
+                            if (t.assignedDate !== dateStr) return false;
+                            if (t.status === 'done') return false; 
+                            if (store.currentUser && t.assignee !== store.currentUser) return false;
+                            return true;
+                        });
+
+                        tasks.forEach(t => {
+                            const el = document.createElement('div');
+                            el.className = 'task-card bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition group relative';
+                            el.draggable = true;
+                            el.ondragstart = (e) => window.dragStart(e, t.id);
+                            el.ondragend = window.dragEnd;
+                            el.innerHTML = createCardHTML(t);
+                            container.appendChild(el);
+                        });
+                    }
+                    curr.setDate(curr.getDate() + 1);
+                }
             }
 
             renderQuickTasks();
@@ -1361,8 +1429,6 @@
                 return;
             }
 
-            const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
             myTasks.forEach(t => {
                 const li = document.createElement('li');
                 li.className = 'flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 group transition hover:shadow-md';
@@ -1379,13 +1445,6 @@
                 if(p === 3) prioClass = 'bg-amber-500 text-white border-amber-600'; 
                 if(p >= 4) prioClass = 'bg-red-500 text-white border-red-600'; 
 
-                // Generate Day Options
-                let dayOptions = `<option value="" ${t.assignedDay === '' ? 'selected' : ''}>--</option>`;
-                days.forEach(d => {
-                    const selected = t.assignedDay === d ? 'selected' : '';
-                    dayOptions += `<option value="${d}" ${selected}>${d.substring(0,3)}</option>`;
-                });
-
                 li.innerHTML = `
                     <div class="flex-shrink-0" title="Assigned to ${assignedUser}">${avatarHTML}</div>
                     <div class="flex-1 min-w-0">
@@ -1393,9 +1452,7 @@
                     </div>
 
                     <div class="flex-shrink-0">
-                         <select onchange="updateTaskDay('${t.id}', this.value)" class="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-1 py-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 outline-none cursor-pointer w-14 text-center shadow-sm">
-                            ${dayOptions}
-                         </select>
+                         <input type="date" onchange="updateTaskDate('${t.id}', this.value)" value="${t.assignedDate || ''}" class="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-1 py-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 outline-none w-24 text-center shadow-sm">
                     </div>
 
                     <div class="flex-shrink-0">
@@ -1486,7 +1543,7 @@
             const title = document.getElementById('task-title');
             const desc = document.getElementById('task-desc');
             const assignee = document.getElementById('task-assignee');
-            const dayInput = document.getElementById('task-day'); // New Input
+            const dateInput = document.getElementById('task-date'); 
             const hiddenId = document.getElementById('task-id');
             const delBtn = document.getElementById('btn-delete');
             
@@ -1495,11 +1552,11 @@
             if(id) {
                 const t = store.kanbanTasks.find(x => x.id === id);
                 title.value = t.title; desc.value = t.description; assignee.value = t.assignee || "";
-                dayInput.value = t.assignedDay || ""; // Set Day
+                dateInput.value = t.assignedDate || ""; 
                 hiddenId.value = t.id; document.getElementById('modal-title').textContent = "Edit Task"; delBtn.classList.remove('hidden');
                 setPriority(t.priority || 1); 
             } else {
-                title.value = ''; desc.value = ''; hiddenId.value = ''; dayInput.value = '';
+                title.value = ''; desc.value = ''; hiddenId.value = ''; dateInput.value = '';
                 if(!store.currentUser) assignee.value = '';
                 document.getElementById('modal-title').textContent = "New Task"; delBtn.classList.add('hidden');
                 setPriority(1); 
@@ -1525,7 +1582,14 @@
                 if(t.status !== 'done') return false;
                 if(t.completedAt < start || t.completedAt > end) return false;
                 if(userFilter && t.assignee !== userFilter) return false;
-                if(dayFilter && t.assignedDay !== dayFilter) return false;
+                // Generic Day Filter (based on date)
+                if(dayFilter) {
+                    if (!t.assignedDate) return false;
+                    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                    const d = new Date(t.assignedDate);
+                    // Check if day matches selected day string
+                    if (days[d.getDay()] !== dayFilter) return false;
+                }
                 return true;
             });
 
@@ -1570,7 +1634,12 @@
                 if(t.status !== 'done') return false;
                 if(t.completedAt < start || t.completedAt > end) return false;
                 if(userFilter && t.assignee !== userFilter) return false;
-                if(dayFilter && t.assignedDay !== dayFilter) return false;
+                if(dayFilter) {
+                     if (!t.assignedDate) return false;
+                    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                    const d = new Date(t.assignedDate);
+                    if (days[d.getDay()] !== dayFilter) return false;
+                }
                 return true;
             });
 
