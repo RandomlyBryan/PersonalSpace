@@ -152,6 +152,14 @@
         /* View Toggle Animation */
         .view-btn { transition: all 0.2s; }
         .view-btn.active { background-color: rgba(255,255,255,0.2); font-weight: bold; border: 1px solid rgba(255,255,255,0.4); }
+
+        /* Timer Pulse */
+        .timer-active { animation: pulse-green 2s infinite; }
+        @keyframes pulse-green {
+            0% { text-shadow: 0 0 0 rgba(16, 185, 129, 0); }
+            50% { text-shadow: 0 0 4px rgba(16, 185, 129, 0.5); }
+            100% { text-shadow: 0 0 0 rgba(16, 185, 129, 0); }
+        }
     </style>
 </head>
 <body class="text-slate-800 antialiased flex flex-col h-screen w-screen overflow-hidden">
@@ -576,8 +584,7 @@
             events: {}, 
             calendarMonth: new Date().getMonth(),
             calendarYear: new Date().getFullYear(),
-            // New: view mode state
-            kanbanMode: 'status' // 'status' or 'week'
+            kanbanMode: 'status' 
         };
         
         let draggedItem = null;
@@ -597,6 +604,7 @@
         window.updateTaskStatus = updateTaskStatus;
         window.updateTaskPriority = updateTaskPriority;
         window.updateTaskDay = updateTaskDay;
+        window.toggleTaskPause = toggleTaskPause; // NEW
         window.openTaskModal = openTaskModal;
         window.closeModal = closeModal;
         window.saveTask = saveTask;
@@ -655,7 +663,7 @@
             store.avatars = JSON.parse(localStorage.getItem('nexus_avatars')) || {};
 
             renderTeamList();
-            generateWeekColumns(); // Prepare week layout
+            generateWeekColumns(); 
             renderKanbanBoard();
             renderCalendar();
             
@@ -881,6 +889,7 @@
                     status: status, createdAt: now, 
                     priority: 1, 
                     assignedDay: "", 
+                    isPaused: false, // New Field
                     completedAt: (status === 'done' ? now : null), 
                     lastMoved: now, log: { todo: 0, inprogress: 0, done: 0 } 
                 };
@@ -949,7 +958,7 @@
                 const t = store.kanbanTasks.find(x => x.id == id);
                 if(t) Object.assign(t, taskData);
             } else {
-                store.kanbanTasks.push({ id: Date.now().toString(), ...taskData, status: 'todo', createdAt: Date.now(), completedAt: null, lastMoved: Date.now(), log: { todo: 0, inprogress: 0, done: 0 } });
+                store.kanbanTasks.push({ id: Date.now().toString(), ...taskData, status: 'todo', createdAt: Date.now(), completedAt: null, lastMoved: Date.now(), log: { todo: 0, inprogress: 0, done: 0 }, isPaused: false });
             }
             localStorage.setItem('nexus_kanban', JSON.stringify(store.kanbanTasks));
             renderKanbanBoard();
@@ -962,20 +971,44 @@
 
             const now = Date.now();
             let newLog = task.log ? { ...task.log } : { todo: 0, inprogress: 0, done: 0 };
-            if (task.status !== 'todo') {
+            
+            // Only add time if it was Running (not paused) and previously in progress
+            if (task.status === 'inprogress' && !task.isPaused) {
                 const elapsed = Math.floor((now - task.lastMoved) / 1000);
-                newLog[task.status] = (newLog[task.status] || 0) + elapsed;
+                newLog['inprogress'] = (newLog['inprogress'] || 0) + elapsed;
             }
+
             task.status = newStatus;
             task.lastMoved = now;
             task.log = newLog;
             task.completedAt = (newStatus === 'done') ? now : null;
+            task.isPaused = false; // Reset pause on move
             
             localStorage.setItem('nexus_kanban', JSON.stringify(store.kanbanTasks));
             renderKanbanBoard();
         }
 
-        // Updated: Update Task Day from Drag and Drop OR Dashboard Dropdown
+        // NEW: Toggle Pause Function
+        function toggleTaskPause(id) {
+            const task = store.kanbanTasks.find(t => t.id === id);
+            if (!task || task.status !== 'inprogress') return;
+
+            const now = Date.now();
+
+            if (task.isPaused) {
+                // RESUME
+                task.isPaused = false;
+                task.lastMoved = now; 
+            } else {
+                // PAUSE
+                const elapsed = Math.floor((now - task.lastMoved) / 1000);
+                task.log['inprogress'] = (task.log['inprogress'] || 0) + elapsed;
+                task.isPaused = true;
+            }
+            localStorage.setItem('nexus_kanban', JSON.stringify(store.kanbanTasks));
+            renderKanbanBoard();
+        }
+
         function updateTaskDay(id, newDay) {
             const task = store.kanbanTasks.find(t => t.id === id);
             if (!task || task.assignedDay === newDay) return;
@@ -1177,11 +1210,37 @@
         function createCardHTML(t) {
              let timerHtml = '';
              let statusColor = 'border-l-4 border-slate-300';
+             
              if (t.status === 'inprogress') {
+                 // Paused vs Running logic
                  const logVal = t.log ? t.log['inprogress'] || 0 : 0;
-                 const elapsed = logVal + Math.floor((Date.now() - t.lastMoved) / 1000);
-                 timerHtml = `<div class="text-xs text-indigo-500 font-bold flex items-center gap-1" id="timer-${t.id}" data-last="${t.lastMoved}" data-stored="${logVal}"><i class="fas fa-stopwatch"></i> <span>${formatTime(elapsed)}</span></div>`;
-                 statusColor = 'border-l-4 border-indigo-500 pl-2';
+                 let displayTime = logVal;
+                 let playPauseIcon = '<i class="fas fa-pause"></i>';
+                 let activeClass = 'timer-active';
+                 let colorClass = 'text-indigo-600';
+
+                 if (t.isPaused) {
+                     // If paused, just show logged time, play icon, no pulse
+                     playPauseIcon = '<i class="fas fa-play"></i>';
+                     activeClass = '';
+                     colorClass = 'text-amber-500';
+                 } else {
+                     // If running, calculate elapsed
+                     displayTime += Math.floor((Date.now() - t.lastMoved) / 1000);
+                 }
+
+                 timerHtml = `
+                    <div class="flex items-center gap-2">
+                         <button onclick="toggleTaskPause('${t.id}')" class="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-[10px] ${colorClass} transition">
+                            ${playPauseIcon}
+                         </button>
+                         <div class="text-xs ${colorClass} font-bold flex items-center gap-1 ${activeClass}" id="timer-${t.id}" data-last="${t.lastMoved}" data-stored="${logVal}" data-paused="${t.isPaused}">
+                            <i class="fas fa-stopwatch"></i> <span>${formatTime(displayTime)}</span>
+                         </div>
+                    </div>
+                 `;
+                 statusColor = t.isPaused ? 'border-l-4 border-amber-400 pl-2' : 'border-l-4 border-indigo-500 pl-2';
+
              } else if (t.status === 'done') {
                  const totalWorkTime = t.log ? t.log['inprogress'] || 0 : 0;
                  timerHtml = `<div class="text-xs text-emerald-600 font-medium flex items-center gap-1"><i class="fas fa-check-circle"></i> <span>${formatTime(totalWorkTime)}</span></div>`;
@@ -1380,7 +1439,13 @@
             document.querySelectorAll('[id^="timer-"]').forEach(el => {
                 const stored = parseInt(el.dataset.stored);
                 const last = parseInt(el.dataset.last);
-                el.querySelector('span').textContent = formatTime(stored + Math.floor((now - last) / 1000));
+                const isPaused = el.dataset.paused === 'true';
+
+                if (!isPaused) {
+                    el.querySelector('span').textContent = formatTime(stored + Math.floor((now - last) / 1000));
+                } else {
+                    el.querySelector('span').textContent = formatTime(stored); // Show stored time only
+                }
             });
         }
         function formatTime(s) {
@@ -1452,7 +1517,7 @@
             const start = new Date(document.getElementById('report-start').value).setHours(0,0,0,0);
             const end = new Date(document.getElementById('report-end').value).setHours(23,59,59,999);
             const userFilter = document.getElementById('report-user-filter').value;
-            const dayFilter = document.getElementById('report-day-filter').value; // New Day Filter
+            const dayFilter = document.getElementById('report-day-filter').value;
             const tbody = document.getElementById('report-body');
             tbody.innerHTML = '';
 
@@ -1460,7 +1525,7 @@
                 if(t.status !== 'done') return false;
                 if(t.completedAt < start || t.completedAt > end) return false;
                 if(userFilter && t.assignee !== userFilter) return false;
-                if(dayFilter && t.assignedDay !== dayFilter) return false; // Filter logic
+                if(dayFilter && t.assignedDay !== dayFilter) return false;
                 return true;
             });
 
