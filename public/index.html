@@ -167,6 +167,10 @@
             backdrop-filter: blur(10px) !important;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
         }
+        .flatpickr-day.selected {
+            background: #4f46e5 !important;
+            border-color: #4f46e5 !important;
+        }
     </style>
 </head>
 <body class="text-slate-800 antialiased flex flex-col h-screen w-screen overflow-hidden">
@@ -386,9 +390,18 @@
                     </div>
 
                     <div id="week-nav-container" class="hidden flex items-center gap-2 bg-black/20 p-1 rounded-lg">
-                        <button onclick="changeWeek(-1)" class="text-white hover:text-indigo-300 px-2"><i class="fas fa-chevron-left"></i></button>
-                        <span id="week-view-label" class="text-xs text-white font-bold w-24 text-center">...</span>
-                        <button onclick="changeWeek(1)" class="text-white hover:text-indigo-300 px-2"><i class="fas fa-chevron-right"></i></button>
+                        <button onclick="changeWeek(-1)" class="text-white hover:text-indigo-300 px-2 h-full"><i class="fas fa-chevron-left"></i></button>
+                        
+                        <div class="relative group">
+                            <input id="week-picker-hidden" class="hidden">
+                            
+                            <button id="week-view-btn" class="text-xs text-white font-bold w-36 text-center flex items-center justify-center gap-2 hover:bg-white/10 rounded py-1 px-2 transition">
+                                <span id="week-view-label">Loading...</span>
+                                <i class="fas fa-calendar-day text-[10px] opacity-70 group-hover:text-indigo-300 transition"></i>
+                            </button>
+                        </div>
+
+                        <button onclick="changeWeek(1)" class="text-white hover:text-indigo-300 px-2 h-full"><i class="fas fa-chevron-right"></i></button>
                     </div>
 
                     <div class="flex gap-2">
@@ -598,12 +611,13 @@
             calendarMonth: new Date().getMonth(),
             calendarYear: new Date().getFullYear(),
             kanbanMode: 'status',
-            // New: Week View State
+            // Week View State
             weekViewStart: new Date() // Will settle to current week's Sunday
         };
         
         let draggedItem = null;
         let uploadingUser = null;
+        let weekPickerInstance = null; // New global for week picker
 
         // --- EXPOSE FUNCTIONS ---
         window.switchUser = switchUser;
@@ -618,7 +632,7 @@
         window.deleteQuickTask = deleteQuickTask;
         window.updateTaskStatus = updateTaskStatus;
         window.updateTaskPriority = updateTaskPriority;
-        window.updateTaskDate = updateTaskDate; // Updated from updateTaskDay
+        window.updateTaskDate = updateTaskDate; 
         window.toggleTaskPause = toggleTaskPause;
         window.openTaskModal = openTaskModal;
         window.closeModal = closeModal;
@@ -689,22 +703,38 @@
             store.avatars = JSON.parse(localStorage.getItem('nexus_avatars')) || {};
 
             renderTeamList();
-            renderKanbanBoard(); // This will trigger generateWeekColumns inside
+            renderKanbanBoard(); 
             renderCalendar();
             
             setInterval(updateKanbanTimers, 1000);
 
-            // Initialize Flatpickr Range
+            // Initialize Main Range Filter
             flatpickr("#date-range-picker", {
                 mode: "range",
                 dateFormat: "Y-m-d",
                 theme: "dark",
                 onChange: function(selectedDates, dateStr, instance) {
-                    // Trigger render only if we have 2 dates (start and end) or if cleared
                     if (selectedDates.length === 2 || selectedDates.length === 0) {
                         renderKanbanBoard();
                     }
                 }
+            });
+
+            // --- NEW: Week View Picker Initialization ---
+            weekPickerInstance = flatpickr("#week-picker-hidden", {
+                dateFormat: "Y-m-d",
+                theme: "dark",
+                disableMobile: "true", // Force custom flatpickr on mobile
+                onChange: function(selectedDates, dateStr, instance) {
+                    if (selectedDates.length > 0) {
+                        jumpToWeek(selectedDates[0]);
+                    }
+                }
+            });
+
+            // Link the week label button to open the hidden picker
+            document.getElementById('week-view-btn').addEventListener('click', () => {
+                 weekPickerInstance.open();
             });
         });
 
@@ -1101,13 +1131,31 @@
                 btnStatus.classList.remove('active'); btnStatus.classList.add('text-opacity-70');
                 filterContainer.classList.add('hidden');
                 weekNavContainer.classList.remove('hidden');
+                
+                // Ensure columns exist
+                if (document.getElementById('week-columns-container').children.length === 0) {
+                    generateWeekColumns();
+                    renderKanbanBoard(); // Re-render to populate
+                }
             }
-            renderKanbanBoard();
         }
 
         function changeWeek(delta) {
             // Move store.weekViewStart by 7 days
             store.weekViewStart.setDate(store.weekViewStart.getDate() + (delta * 7));
+            generateWeekColumns();
+            renderKanbanBoard();
+        }
+
+        // --- NEW: JUMP TO WEEK FROM CALENDAR ---
+        function jumpToWeek(date) {
+            const day = date.getDay();
+            const diff = date.getDate() - day; // Adjust when day is Sunday
+            const newStart = new Date(date);
+            newStart.setDate(diff);
+            newStart.setHours(0,0,0,0);
+            
+            store.weekViewStart = newStart;
             generateWeekColumns();
             renderKanbanBoard();
         }
