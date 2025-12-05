@@ -290,14 +290,20 @@
             <div id="view-dashboard" class="flex-1 overflow-hidden p-4 md:p-6 fade-in h-full flex flex-col">
                 
                 <header class="mb-4 text-white shrink-0">
-                    <div class="flex justify-between items-end">
+                    <div class="flex justify-between items-center">
                         <div>
                             <h1 class="text-3xl font-bold tracking-tight" id="clock">00:00</h1>
                             <p class="text-sm opacity-90 mt-1" id="date">Loading date...</p>
                         </div>
-                        <div class="text-right">
-                            <p class="text-sm font-light text-blue-100" id="greeting">Connecting...</p>
-                            <span id="dashboard-owner-badge" class="bg-emerald-500/80 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider hidden shadow-lg border border-white/20">Private Workspace</span>
+                        
+                        <div class="flex items-center gap-4">
+                            <div class="text-right">
+                                <p class="text-lg font-bold text-white leading-tight" id="greeting">Connecting...</p>
+                                <span id="dashboard-owner-badge" class="bg-emerald-500/80 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider hidden shadow-lg border border-white/20">Private Workspace</span>
+                            </div>
+                            <div id="header-avatar" class="w-14 h-14 rounded-full bg-white/10 border-2 border-white/30 shadow-lg flex items-center justify-center overflow-hidden shrink-0">
+                                <i class="fas fa-user text-white/50 text-2xl"></i>
+                            </div>
                         </div>
                     </div>
                 </header>
@@ -308,15 +314,6 @@
                         
                         <div class="flex flex-col gap-4 h-full">
                             
-                            <div class="glass-panel rounded-2xl p-4 shrink-0">
-                                <h2 class="text-sm font-bold mb-2 flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
-                                    <i class="fas fa-bullseye"></i> Daily Focus
-                                </h2>
-                                <input type="text" id="focus-input" placeholder="Main goal..." 
-                                    class="w-full bg-transparent border-b-2 border-slate-200 dark:border-slate-600 py-1 focus:outline-none focus:border-indigo-500 transition dark:text-white text-sm"
-                                    onchange="saveFocus(this.value)">
-                            </div>
-
                             <div class="glass-panel rounded-2xl p-4 flex-1 flex flex-col min-h-0">
                                 <h2 class="text-sm font-bold mb-2 flex items-center gap-2 text-amber-500">
                                     <i class="fas fa-sticky-note"></i> Notes
@@ -412,12 +409,6 @@
                                   class="bg-white/10 border-none text-white text-xs rounded px-2 py-1 pl-6 outline-none w-48 placeholder-white/50 cursor-pointer">
                          </div>
                          <button onclick="clearFilters()" class="text-xs text-white/50 hover:text-white px-2" title="Clear Filter"><i class="fas fa-times"></i></button>
-                    </div>
-
-                    <div id="week-nav-container" class="hidden flex items-center gap-2 bg-black/20 p-1 rounded-lg relative">
-                        <button onclick="changeWeek(-1)" class="text-white hover:text-indigo-300 px-2 h-full"><i class="fas fa-chevron-left"></i></button>
-                        <div class="px-2 text-xs font-bold text-white text-center w-24" id="week-view-label">...</div>
-                        <button onclick="changeWeek(1)" class="text-white hover:text-indigo-300 px-2 h-full"><i class="fas fa-chevron-right"></i></button>
                     </div>
 
                     <div class="flex gap-2">
@@ -765,6 +756,9 @@
             const hint = document.getElementById('view-mode-hint');
             const trackerBadge = document.getElementById('tracker-badge');
             const trackerSub = document.getElementById('tracker-subtitle');
+            
+            // Avatar Element
+            const avatarContainer = document.getElementById('header-avatar');
 
             if (store.currentUser) {
                 badge.textContent = `${store.currentUser}'s Workspace`;
@@ -773,12 +767,24 @@
                 hint.textContent = "Private View (Local)";
                 trackerBadge.textContent = "Personal Filter";
                 trackerSub.textContent = `Tasks assigned to ${store.currentUser}`;
+
+                // Update Avatar logic
+                if (store.avatars[store.currentUser]) {
+                    avatarContainer.innerHTML = `<img src="${store.avatars[store.currentUser]}" class="w-full h-full object-cover">`;
+                } else {
+                    // Default Initial with Color
+                    avatarContainer.innerHTML = `<div class="w-full h-full bg-indigo-600 flex items-center justify-center text-white text-2xl font-bold">${store.currentUser.charAt(0).toUpperCase()}</div>`;
+                }
+
             } else {
                 badge.classList.add('hidden');
                 updateClock();
                 hint.textContent = "Admin View (Local)";
                 trackerBadge.textContent = "Main View";
                 trackerSub.textContent = "Showing all project tasks";
+                
+                // Admin Default Avatar
+                avatarContainer.innerHTML = `<i class="fas fa-user-shield text-white/50 text-2xl"></i>`;
             }
         }
 
@@ -806,6 +812,12 @@
                     store.avatars[uploadingUser] = base64Img;
                     localStorage.setItem('nexus_avatars', JSON.stringify(store.avatars));
                     renderTeamList();
+                    
+                    // Update header avatar instantly if it's the current user
+                    if (store.currentUser === uploadingUser) {
+                        updateUIForUser();
+                    }
+                    
                     renderQuickTasks();
                     renderKanbanBoard();
                 }
@@ -1137,15 +1149,12 @@
             const btnStatus = document.getElementById('btn-view-status');
             const btnWeek = document.getElementById('btn-view-week');
             const filterContainer = document.getElementById('kanban-filter-container');
-            const weekNavContainer = document.getElementById('week-nav-container');
 
             if (mode === 'status') {
                 statusView.classList.remove('hidden');
                 weekView.classList.add('hidden');
                 btnStatus.classList.add('active', 'text-white'); btnStatus.classList.remove('text-opacity-70');
                 btnWeek.classList.remove('active'); btnWeek.classList.add('text-opacity-70');
-                
-                weekNavContainer.classList.add('hidden');
                 
                 // Reset placeholder for range mode
                 document.getElementById('date-range-picker').placeholder = "Date / Filter...";
@@ -1154,8 +1163,6 @@
                 weekView.classList.remove('hidden');
                 btnWeek.classList.add('active', 'text-white'); btnWeek.classList.remove('text-opacity-70');
                 btnStatus.classList.remove('active'); btnStatus.classList.add('text-opacity-70');
-                
-                weekNavContainer.classList.remove('hidden');
                 
                 // Change placeholder to indicate jump function
                 document.getElementById('date-range-picker').placeholder = "Jump to Week...";
@@ -1166,7 +1173,6 @@
                     renderKanbanBoard(); // Re-render to populate
                 }
             }
-            // UPDATED: We keep filterContainer visible in both modes now, but logic changes in flatpickr onChange
         }
 
         function changeWeek(delta) {
@@ -1195,11 +1201,6 @@
             
             const curr = new Date(store.weekViewStart); // Start at sunday
             const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-            // Update label
-            const endOfWeek = new Date(curr);
-            endOfWeek.setDate(endOfWeek.getDate() + 6);
-            document.getElementById('week-view-label').textContent = `${curr.getMonth()+1}/${curr.getDate()} - ${endOfWeek.getMonth()+1}/${endOfWeek.getDate()}`;
 
             for (let i = 0; i < 7; i++) {
                 // Fix: Use local date generation instead of ISO (UTC) to prevent column shifting
