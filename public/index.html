@@ -313,7 +313,7 @@
                             
                             <div class="flex justify-between px-2 text-[10px] font-bold text-slate-400 uppercase mb-1 shrink-0">
                                 <span>Task</span>
-                                <span>Urgency & Status</span>
+                                <span>Schedule, Urgency & Status</span>
                             </div>
 
                             <ul id="quick-task-list" class="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0"></ul>
@@ -581,6 +581,7 @@
         window.deleteQuickTask = deleteQuickTask;
         window.updateTaskStatus = updateTaskStatus;
         window.updateTaskPriority = updateTaskPriority;
+        window.updateTaskDay = updateTaskDay;
         window.openTaskModal = openTaskModal;
         window.closeModal = closeModal;
         window.saveTask = saveTask;
@@ -864,7 +865,7 @@
                     title: val, description: "", assignee: assignee,
                     status: status, createdAt: now, 
                     priority: 1, 
-                    assignedDay: "", // New Field
+                    assignedDay: "", 
                     completedAt: (status === 'done' ? now : null), 
                     lastMoved: now, log: { todo: 0, inprogress: 0, done: 0 } 
                 };
@@ -921,7 +922,7 @@
             const title = document.getElementById('task-title').value;
             const desc = document.getElementById('task-desc').value;
             const priority = parseInt(document.getElementById('task-priority').value) || 1;
-            const assignedDay = document.getElementById('task-day').value; // Get Day
+            const assignedDay = document.getElementById('task-day').value; 
             
             let assignee = document.getElementById('task-assignee').value;
             if (store.currentUser && assignee === "") assignee = store.currentUser;
@@ -959,7 +960,7 @@
             renderKanbanBoard();
         }
 
-        // NEW: Update Task Day from Drag and Drop
+        // Updated: Update Task Day from Drag and Drop OR Dashboard Dropdown
         function updateTaskDay(id, newDay) {
             const task = store.kanbanTasks.find(t => t.id === id);
             if (!task || task.assignedDay === newDay) return;
@@ -1247,7 +1248,7 @@
                     
                     const tasks = store.kanbanTasks.filter(t => {
                         if (t.assignedDay !== day) return false;
-                        if (t.status === 'done') return false; // Optional: hide done tasks in schedule view to keep it clean? Let's keep them out for now.
+                        if (t.status === 'done') return false; 
                         if (store.currentUser) return t.assignee === store.currentUser;
                         return true;
                     });
@@ -1286,6 +1287,8 @@
                 return;
             }
 
+            const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
             myTasks.forEach(t => {
                 const li = document.createElement('li');
                 li.className = 'flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 group transition hover:shadow-md';
@@ -1302,11 +1305,25 @@
                 if(p === 3) prioClass = 'bg-amber-500 text-white border-amber-600'; 
                 if(p >= 4) prioClass = 'bg-red-500 text-white border-red-600'; 
 
+                // Generate Day Options
+                let dayOptions = `<option value="" ${t.assignedDay === '' ? 'selected' : ''}>--</option>`;
+                days.forEach(d => {
+                    const selected = t.assignedDay === d ? 'selected' : '';
+                    dayOptions += `<option value="${d}" ${selected}>${d.substring(0,3)}</option>`;
+                });
+
                 li.innerHTML = `
                     <div class="flex-shrink-0" title="Assigned to ${assignedUser}">${avatarHTML}</div>
                     <div class="flex-1 min-w-0">
                         <span class="dark:text-slate-200 font-medium truncate block" title="${t.title}">${t.title}</span>
                     </div>
+
+                    <div class="flex-shrink-0">
+                         <select onchange="updateTaskDay('${t.id}', this.value)" class="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-1 py-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 outline-none cursor-pointer w-14 text-center shadow-sm">
+                            ${dayOptions}
+                         </select>
+                    </div>
+
                     <div class="flex-shrink-0">
                         <select onchange="updateTaskPriority('${t.id}', this.value)" class="${prioClass} border rounded px-1 py-1 text-[10px] font-bold outline-none cursor-pointer w-20 text-center shadow-sm">
                             <option value="1" ${p===1 ? 'selected' : ''}>Low</option>
