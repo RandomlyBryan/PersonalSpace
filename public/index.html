@@ -291,7 +291,7 @@
                             
                             <div class="flex justify-between px-3 text-xs font-bold text-slate-400 uppercase mb-2">
                                 <span>Task Details</span>
-                                <span>Status</span>
+                                <span>Urgency & Status</span>
                             </div>
 
                             <ul id="quick-task-list" class="flex-1 overflow-y-auto space-y-2 pr-2"></ul>
@@ -518,6 +518,7 @@
         window.addQuickTask = addQuickTask;
         window.deleteQuickTask = deleteQuickTask;
         window.updateTaskStatus = updateTaskStatus;
+        window.updateTaskPriority = updateTaskPriority;
         window.openTaskModal = openTaskModal;
         window.closeModal = closeModal;
         window.saveTask = saveTask;
@@ -891,6 +892,15 @@
             renderKanbanBoard();
         }
 
+        // NEW FUNCTION: Handle priority change from list
+        function updateTaskPriority(id, newPriority) {
+            const task = store.kanbanTasks.find(t => t.id === id);
+            if (!task) return;
+            task.priority = parseInt(newPriority);
+            localStorage.setItem('nexus_kanban', JSON.stringify(store.kanbanTasks));
+            renderKanbanBoard(); // Re-render to update colors and sort order
+        }
+
         function deleteCurrentTask() {
             const id = document.getElementById('task-id').value;
             if(id && confirm('Delete?')) {
@@ -1156,12 +1166,11 @@
                     avatarHTML = `<div class="w-8 h-8 rounded-full bg-cover bg-center border border-slate-200 dark:border-slate-600" style="background-image: url('${store.avatars[assignedUser]}')"></div>`;
                 }
 
-                // Priority Indicator for list
-                let prioColor = 'text-slate-300';
+                // Priority Logic for Dropdown Color
                 const p = t.priority || 1;
-                if(p >= 3) prioColor = 'text-amber-400';
-                if(p >= 4) prioColor = 'text-red-500';
-                if(p <= 2) prioColor = 'text-emerald-400';
+                let prioClass = 'text-emerald-600 bg-emerald-50 border-emerald-200';
+                if(p >= 3) prioClass = 'text-amber-600 bg-amber-50 border-amber-200';
+                if(p >= 4) prioClass = 'text-red-600 bg-red-50 border-red-200';
 
                 li.innerHTML = `
                     <div class="flex-shrink-0" title="Assigned to ${assignedUser}">
@@ -1169,10 +1178,17 @@
                     </div>
 
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
-                            <span class="dark:text-slate-200 font-medium truncate block" title="${t.title}">${t.title}</span>
-                            <span class="text-[10px] ${prioColor}"><i class="fas fa-flag"></i> ${p}</span>
-                        </div>
+                        <span class="dark:text-slate-200 font-medium truncate block" title="${t.title}">${t.title}</span>
+                    </div>
+
+                    <div class="flex-shrink-0">
+                        <select onchange="updateTaskPriority('${t.id}', this.value)" class="${prioClass} border rounded px-1 py-1 text-[10px] font-bold outline-none cursor-pointer w-16 text-center">
+                            <option value="1" ${p===1 ? 'selected' : ''}>Flag 1</option>
+                            <option value="2" ${p===2 ? 'selected' : ''}>Flag 2</option>
+                            <option value="3" ${p===3 ? 'selected' : ''}>Flag 3</option>
+                            <option value="4" ${p===4 ? 'selected' : ''}>Flag 4</option>
+                            <option value="5" ${p===5 ? 'selected' : ''}>Flag 5</option>
+                        </select>
                     </div>
 
                     <div class="flex-shrink-0">
