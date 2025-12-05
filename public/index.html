@@ -389,11 +389,11 @@
                          <button onclick="clearFilters()" class="text-xs text-white/50 hover:text-white px-2" title="Clear Filter"><i class="fas fa-times"></i></button>
                     </div>
 
-                    <div id="week-nav-container" class="hidden flex items-center gap-2 bg-black/20 p-1 rounded-lg">
+                    <div id="week-nav-container" class="hidden flex items-center gap-2 bg-black/20 p-1 rounded-lg relative">
                         <button onclick="changeWeek(-1)" class="text-white hover:text-indigo-300 px-2 h-full"><i class="fas fa-chevron-left"></i></button>
                         
-                        <div class="relative group">
-                            <input id="week-picker-hidden" class="hidden">
+                        <div class="relative">
+                            <input id="week-picker-hidden" class="absolute top-full left-0 w-0 h-0 opacity-0 pointer-events-none">
                             
                             <button id="week-view-btn" class="text-xs text-white font-bold w-36 text-center flex items-center justify-center gap-2 hover:bg-white/10 rounded py-1 px-2 transition">
                                 <span id="week-view-label">Loading...</span>
@@ -725,6 +725,8 @@
                 dateFormat: "Y-m-d",
                 theme: "dark",
                 disableMobile: "true", // Force custom flatpickr on mobile
+                // FIX: Explicitly anchor the calendar to the visible button
+                positionElement: document.getElementById('week-view-btn'), 
                 onChange: function(selectedDates, dateStr, instance) {
                     if (selectedDates.length > 0) {
                         jumpToWeek(selectedDates[0]);
