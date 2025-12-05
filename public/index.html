@@ -109,6 +109,7 @@
         .calendar-day.today { background: #e0e7ff; color: #4338ca; font-weight: bold; }
         .dark .calendar-day.today { background: #312e81; color: #a5b4fc; }
 
+        /* UPDATED: Event Item with Delete Button logic */
         .cal-event-item {
             font-size: 0.65rem;
             line-height: 1.2;
@@ -125,12 +126,35 @@
             display: flex;
             flex-direction: column;
             gap: 2px;
+            position: relative; /* For absolute delete button */
         }
         .dark .cal-event-item {
             background: rgba(16, 185, 129, 0.3);
             color: #d1fae5;
             border-left: 2px solid #34d399;
         }
+        
+        /* New: Hover Delete Button in Calendar */
+        .cal-delete-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 14px;
+            height: 14px;
+            background: rgba(239, 68, 68, 0.8);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+        }
+        .cal-event-item:hover .cal-delete-btn { opacity: 1; }
+        .cal-delete-btn:hover { background: #ef4444; transform: scale(1.1); }
+
         .cal-time { font-weight: 800; opacity: 0.9; font-size: 0.6rem; display: block; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom:1px; margin-bottom:1px;}
         .calendar-day-number { margin-bottom: 2px; }
 
@@ -166,6 +190,7 @@
             border: 1px solid rgba(255,255,255,0.1) !important;
             backdrop-filter: blur(10px) !important;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
+            z-index: 9999 !important;
         }
         .flatpickr-day.selected {
             background: #4f46e5 !important;
@@ -358,7 +383,7 @@
                         <div id="calendar-body" class="calendar-grid flex-1 overflow-y-auto">
                         </div>
                         
-                        <div class="mt-1 text-center text-[10px] text-slate-400 italic shrink-0">Click date to add event</div>
+                        <div class="mt-1 text-center text-[10px] text-slate-400 italic shrink-0">Click date to add event. Hover event to delete.</div>
                     </div>
 
                 </div>
@@ -383,24 +408,15 @@
                     <div id="kanban-filter-container" class="flex items-center gap-2 bg-black/20 p-1 rounded-lg">
                          <div class="relative flex items-center">
                              <i class="fas fa-calendar-alt text-white/50 text-xs absolute left-2 pointer-events-none"></i>
-                             <input type="text" id="date-range-picker" placeholder="Filter by Date Range..." 
-                                 class="bg-white/10 border-none text-white text-xs rounded px-2 py-1 pl-6 outline-none w-48 placeholder-white/50 cursor-pointer">
+                             <input type="text" id="date-range-picker" placeholder="Date / Filter..." 
+                                  class="bg-white/10 border-none text-white text-xs rounded px-2 py-1 pl-6 outline-none w-48 placeholder-white/50 cursor-pointer">
                          </div>
                          <button onclick="clearFilters()" class="text-xs text-white/50 hover:text-white px-2" title="Clear Filter"><i class="fas fa-times"></i></button>
                     </div>
 
                     <div id="week-nav-container" class="hidden flex items-center gap-2 bg-black/20 p-1 rounded-lg relative">
                         <button onclick="changeWeek(-1)" class="text-white hover:text-indigo-300 px-2 h-full"><i class="fas fa-chevron-left"></i></button>
-                        
-                        <div class="relative">
-                            <input id="week-picker-hidden" class="absolute top-full left-0 w-0 h-0 opacity-0 pointer-events-none">
-                            
-                            <button id="week-view-btn" class="text-xs text-white font-bold w-36 text-center flex items-center justify-center gap-2 hover:bg-white/10 rounded py-1 px-2 transition">
-                                <span id="week-view-label">Loading...</span>
-                                <i class="fas fa-calendar-day text-[10px] opacity-70 group-hover:text-indigo-300 transition"></i>
-                            </button>
-                        </div>
-
+                        <div class="px-2 text-xs font-bold text-white text-center w-24" id="week-view-label">...</div>
                         <button onclick="changeWeek(1)" class="text-white hover:text-indigo-300 px-2 h-full"><i class="fas fa-chevron-right"></i></button>
                     </div>
 
@@ -617,7 +633,6 @@
         
         let draggedItem = null;
         let uploadingUser = null;
-        let weekPickerInstance = null; // New global for week picker
 
         // --- EXPOSE FUNCTIONS ---
         window.switchUser = switchUser;
@@ -708,35 +723,24 @@
             
             setInterval(updateKanbanTimers, 1000);
 
-            // Initialize Main Range Filter
+            // Initialize Main Range Filter (UPDATED LOGIC)
             flatpickr("#date-range-picker", {
                 mode: "range",
                 dateFormat: "Y-m-d",
                 theme: "dark",
                 onChange: function(selectedDates, dateStr, instance) {
-                    if (selectedDates.length === 2 || selectedDates.length === 0) {
-                        renderKanbanBoard();
+                    if (store.kanbanMode === 'week') {
+                        // WEEK VIEW LOGIC: Jump to the week of the selected date
+                        if (selectedDates.length > 0) {
+                            jumpToWeek(selectedDates[0]);
+                        }
+                    } else {
+                        // STATUS VIEW LOGIC: Filter by range
+                        if (selectedDates.length === 2 || selectedDates.length === 0) {
+                            renderKanbanBoard();
+                        }
                     }
                 }
-            });
-
-            // --- NEW: Week View Picker Initialization ---
-            weekPickerInstance = flatpickr("#week-picker-hidden", {
-                dateFormat: "Y-m-d",
-                theme: "dark",
-                disableMobile: "true", // Force custom flatpickr on mobile
-                // FIX: Explicitly anchor the calendar to the visible button
-                positionElement: document.getElementById('week-view-btn'), 
-                onChange: function(selectedDates, dateStr, instance) {
-                    if (selectedDates.length > 0) {
-                        jumpToWeek(selectedDates[0]);
-                    }
-                }
-            });
-
-            // Link the week label button to open the hidden picker
-            document.getElementById('week-view-btn').addEventListener('click', () => {
-                 weekPickerInstance.open();
             });
         });
 
@@ -861,15 +865,26 @@
                 num.textContent = d;
                 el.appendChild(num);
                 
-                events.forEach(evtStr => {
+                events.forEach((evtStr, index) => {
                     const evtDiv = document.createElement('div');
-                    evtDiv.className = "cal-event-item";
+                    evtDiv.className = "cal-event-item group";
                     if (evtStr.includes("||")) {
                         const parts = evtStr.split("||");
                         evtDiv.innerHTML = `<span class="cal-time">${parts[0]}</span><span>${parts[1]}</span>`;
                     } else {
                         evtDiv.textContent = evtStr;
                     }
+                    
+                    // UPDATED: Quick Delete Button (Hover)
+                    const delBtn = document.createElement('div');
+                    delBtn.className = 'cal-delete-btn';
+                    delBtn.innerHTML = '<i class="fas fa-times"></i>';
+                    delBtn.onclick = (e) => {
+                        e.stopPropagation(); // Stop opening the modal
+                        deleteEvent(dateKey, index);
+                    };
+                    evtDiv.appendChild(delBtn);
+
                     el.appendChild(evtDiv);
                 });
 
@@ -938,11 +953,16 @@
         }
 
         function deleteEvent(dateStr, idx) {
-            store.events[dateStr].splice(idx, 1);
-            if(store.events[dateStr].length === 0) delete store.events[dateStr];
-            localStorage.setItem('nexus_events', JSON.stringify(store.events));
-            renderDayEvents(dateStr);
-            renderCalendar();
+            if(store.events[dateStr]) {
+                store.events[dateStr].splice(idx, 1);
+                if(store.events[dateStr].length === 0) delete store.events[dateStr];
+                localStorage.setItem('nexus_events', JSON.stringify(store.events));
+                // Only re-render list if modal is open
+                if (!document.getElementById('calendar-modal').classList.contains('hidden')) {
+                    renderDayEvents(dateStr);
+                }
+                renderCalendar();
+            }
         }
 
         // --- TASKS LOGIC ---
@@ -1124,15 +1144,21 @@
                 weekView.classList.add('hidden');
                 btnStatus.classList.add('active', 'text-white'); btnStatus.classList.remove('text-opacity-70');
                 btnWeek.classList.remove('active'); btnWeek.classList.add('text-opacity-70');
-                filterContainer.classList.remove('hidden');
+                
                 weekNavContainer.classList.add('hidden');
+                
+                // Reset placeholder for range mode
+                document.getElementById('date-range-picker').placeholder = "Date / Filter...";
             } else {
                 statusView.classList.add('hidden');
                 weekView.classList.remove('hidden');
                 btnWeek.classList.add('active', 'text-white'); btnWeek.classList.remove('text-opacity-70');
                 btnStatus.classList.remove('active'); btnStatus.classList.add('text-opacity-70');
-                filterContainer.classList.add('hidden');
+                
                 weekNavContainer.classList.remove('hidden');
+                
+                // Change placeholder to indicate jump function
+                document.getElementById('date-range-picker').placeholder = "Jump to Week...";
                 
                 // Ensure columns exist
                 if (document.getElementById('week-columns-container').children.length === 0) {
@@ -1140,6 +1166,7 @@
                     renderKanbanBoard(); // Re-render to populate
                 }
             }
+            // UPDATED: We keep filterContainer visible in both modes now, but logic changes in flatpickr onChange
         }
 
         function changeWeek(delta) {
@@ -1736,7 +1763,7 @@
                 if(t.completedAt < start || t.completedAt > end) return false;
                 if(userFilter && t.assignee !== userFilter) return false;
                 if(dayFilter) {
-                      if (!t.assignedDate) return false;
+                       if (!t.assignedDate) return false;
                     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
                     const d = new Date(t.assignedDate);
                     if (days[d.getDay()] !== dayFilter) return false;
